@@ -91,3 +91,30 @@ export interface ApprovalHistoryItem {
   comment: string | null;
   createdAt: string;
 }
+
+// --- 休暇申請（休暇申請既存ツール・別スプレッドシート）---
+
+export interface LeaveApplicationItem {
+  rowIndex: number;
+  appliedAt: string;
+  employeeNumber: string | number;
+  employeeName: string;
+  requestType: string;
+  startDate: string;
+  endDate: string;
+  days: number;
+  timeValue: string;
+  reason: string;
+  attachmentUrl: string;
+  branchManagerStatus: string;
+  executiveStatus: string;
+  hrStatus: string;
+  isCancelled: boolean;
+}
+
+export interface PaidLeaveListItem {
+  number: string | number;
+  name: string;
+  paidLeaveDays: number | string;
+  lastUpdated: string | null;
+}

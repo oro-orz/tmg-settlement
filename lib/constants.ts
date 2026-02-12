@@ -47,7 +47,7 @@ export const AI_RISK_LABELS = {
   [AI_RISK_LEVEL.ERROR]: "NG",
 } as const;
 
-// 月の自動切り替えロジック用
+// 月の自動切り替えロジック用（TMG精算用：15日まで先月、16日以降今月）
 export function getCurrentTargetMonth(): string {
   const now = new Date();
   // 今月1日から15日まで → 先月分を表示
@@ -58,4 +58,10 @@ export function getCurrentTargetMonth(): string {
   } else {
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   }
+}
+
+/** 常に今月の YYYY-MM を返す（休暇申請承認のデフォルト用） */
+export function getCurrentMonth(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 }
