@@ -266,14 +266,15 @@ function doPost(e) {
       return Utilities.formatDate(date, "Asia/Tokyo", "yyyy年MM月dd日");
     };
   
-    // 共通メッセージテンプレート
+    // 共通メッセージテンプレート（本番の休暇申請承認画面へ誘導）
+    const leaveApprovalUrl = 'https://tmg-settlement.vercel.app/leave-approval';
     const messageTemplate = (recipientId) => `[To:${recipientId}] 申請の確認をお願いします\n\n`
       + `【申請者】${employeeName} さん\n`
       + `【申請種類】${requestType}\n`
       + `【申請期間】${formatDate(startDate)} ～ ${formatDate(endDate)}\n`
       + `【申請理由】${reason}\n\n`
-      + `※申請履歴シートで承認状態を更新してください。\n`
-      + `※申請履歴シート: https://docs.google.com/spreadsheets/d/1dqrG85tGQrE0-nBfBf2lBQV8AdbPGlfE4DOpqIO2f7k/edit?gid=1784768490#gid=1784768490&range=A1\n\n`
+      + `※以下のリンクから承認してください。\n`
+      + `${leaveApprovalUrl}\n\n`
       + `※このメッセージは自動送信されています。`;
   
     // 通知を送信する関数
