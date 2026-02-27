@@ -11,6 +11,7 @@ import {
   faCircleCheck,
   faBan,
   faUserTie,
+  faRotateLeft,
 } from "@fortawesome/free-solid-svg-icons";
 import { LoadingSpinner } from "@/components/shared/LoadingSpinner";
 
@@ -68,14 +69,89 @@ export function ApprovalArea({ application, onSubmitted }: ApprovalAreaProps) {
   const isReadOnly =
     application.checkStatus === "経理承認済" ||
     application.checkStatus === "最終承認済";
+  const [cancelApprovalModalOpen, setCancelApprovalModalOpen] = useState(false);
+
+  const handleCancelApproval = async () => {
+    try {
+      await submit({
+        applicationId: application.applicationId,
+        action: "cancel_approval",
+        checker: "担当者",
+        comment: undefined,
+      });
+      setCancelApprovalModalOpen(false);
+      onSubmitted();
+    } catch (e) {
+      console.error(e);
+      alert("承認のキャンセルに失敗しました");
+    }
+  };
+
   if (isReadOnly) {
     return (
-      <div className="p-4 space-y-3 text-body text-muted-foreground">
-        <p>{application.accountingChecker && `担当: ${application.accountingChecker}`}</p>
-        {application.accountingComment && (
-          <p className="pt-2">{application.accountingComment}</p>
+      <>
+        <div className="p-4 space-y-3 text-body text-muted-foreground">
+          <p>{application.accountingChecker && `担当: ${application.accountingChecker}`}</p>
+          {application.accountingComment && (
+            <p className="pt-2">{application.accountingComment}</p>
+          )}
+          {application.checkStatus === "最終承認済" && (
+            <div className="pt-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCancelApprovalModalOpen(true)}
+                disabled={isSubmitting}
+                className="w-full border-amber-500 text-amber-700 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/30"
+                title="承認を取りやめ、未確認状態に戻す"
+              >
+                <FontAwesomeIcon icon={faRotateLeft} className="mr-2" />
+                承認をキャンセル
+              </Button>
+            </div>
+          )}
+        </div>
+        {cancelApprovalModalOpen && (
+          <div
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-4"
+            aria-modal="true"
+            aria-labelledby="cancel-approval-modal-title"
+            role="dialog"
+          >
+            <div className="w-full max-w-md rounded-xl bg-card p-6 shadow-xl border border-border">
+              <h2
+                id="cancel-approval-modal-title"
+                className="text-body font-semibold text-foreground mb-3"
+              >
+                承認をキャンセル
+              </h2>
+              <p className="text-body text-foreground mb-6">
+                承認を取りやめ、申請を未確認の状態に戻します。実行しますか？
+              </p>
+              <div className="flex gap-3 justify-end">
+                <Button
+                  variant="outline"
+                  onClick={() => setCancelApprovalModalOpen(false)}
+                  disabled={isSubmitting}
+                >
+                  閉じる
+                </Button>
+                <Button
+                  className="bg-amber-600 hover:bg-amber-700"
+                  onClick={handleCancelApproval}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <LoadingSpinner className="h-4 w-4" />
+                  ) : (
+                    "実行する"
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
         )}
-      </div>
+      </>
     );
   }
 

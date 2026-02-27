@@ -75,6 +75,7 @@ export async function POST(request: NextRequest) {
     "send_to_executive",
     "executive_approve",
     "executive_reject",
+    "cancel_approval",
   ];
   if (
     !applicationId ||

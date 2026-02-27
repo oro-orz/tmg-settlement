@@ -121,6 +121,19 @@ function apiSubmitCheck(params) {
         sheet.getRange(targetRow, 23).setValue(now);
         sheet.getRange(targetRow, 24).setValue(comment);
         break;
+      case 'cancel_approval':
+        var currentStatus = sheet.getRange(targetRow, 16).getValue();
+        if (currentStatus !== '最終承認済') {
+          return apiError('承認をキャンセルできるのは最終承認済の申請のみです');
+        }
+        sheet.getRange(targetRow, 16).setValue('未確認');
+        sheet.getRange(targetRow, 19).setValue('');
+        sheet.getRange(targetRow, 20).setValue('');
+        sheet.getRange(targetRow, 21).setValue('');
+        sheet.getRange(targetRow, 22).setValue('');
+        sheet.getRange(targetRow, 23).setValue('');
+        sheet.getRange(targetRow, 24).setValue('');
+        break;
       default:
         return apiError('Invalid checkAction: ' + (action || ''));
     }

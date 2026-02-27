@@ -594,7 +594,30 @@ function doPost(e) {
     calendar.createAllDayEvent(title, start, end);
   }
 
-  // 拠点長・役員・労務の承認状態を更新。労務「確認済」の場合は有給減算と処理済みまで実行。cancelled で取り消し。
+  // 有給休暇を Google カレンダーから削除（姓 有給 or 姓 有給(半日) のタイトルで検索）
+  function removePaidLeaveFromCalendar(employeeName, startDateVal, endDateVal, days) {
+    var calendar = CalendarApp.getCalendarById(PAID_LEAVE_CALENDAR_ID);
+    if (!calendar) {
+      Logger.log('有給カレンダーが見つかりません: ' + PAID_LEAVE_CALENDAR_ID);
+      return;
+    }
+    var familyName = getFamilyName(employeeName);
+    var title = (days !== Math.floor(days))
+      ? familyName + ' 有給(半日)'
+      : familyName + ' 有給';
+    var start = new Date(startDateVal);
+    var end = new Date(endDateVal);
+    end.setDate(end.getDate() + 1);
+    var events = calendar.getEvents(start, end);
+    for (var i = 0; i < events.length; i++) {
+      if (events[i].getTitle() === title) {
+        events[i].deleteEvent();
+        break;
+      }
+    }
+  }
+
+  // 拠点長・役員・労務の承認状態を更新。労務「確認済」の場合は有給減算と処理済みまで実行。cancelled で取り消し。cancel_approval で最終承認済を元に戻す。
   function updateLeaveApprovalApi(data) {
     var rowIndex = data.rowIndex;
     var column = data.column; // 'branch_manager' | 'executive' | 'hr' | 'cancelled'
@@ -625,13 +648,47 @@ function doPost(e) {
         }
         return { success: true, message: '取り消しました' };
       }
+      // 最終承認済の申請を「承認をキャンセル」で元に戻す
+      if (String(column) === 'cancel_approval' && (value === true || value === 'true')) {
+        var rowDataCancel = sheet.getRange(rowIndex, 1, rowIndex, 15).getValues()[0];
+        var requestTypeCancel = rowDataCancel[3];
+        var daysCancel = rowDataCancel[6];
+        var employeeNumberCancel = rowDataCancel[1];
+        var employeeNameCancel = rowDataCancel[2];
+        var startDateCancel = rowDataCancel[4];
+        var endDateCancel = rowDataCancel[5];
+        var hrStatusCancel = rowDataCancel[12];   // M列: 労務確認
+        var alreadyAddedCancel = rowDataCancel[14]; // O列: カレンダー登録済
+        // 拠点長・役員・労務を未承認・未確認に戻す
+        sheet.getRange(rowIndex, 11).setValue('未承認');
+        sheet.getRange(rowIndex, 12).setValue('未承認');
+        sheet.getRange(rowIndex, 13).setValue('未確認');
+        if (requestTypeCancel === '有給休暇') {
+          if (hrStatusCancel === '処理済') {
+            try {
+              updatePaidLeaveDaysBySpreadsheetId(ss, employeeNumberCancel, -daysCancel);
+            } catch (err) {
+              Logger.log('承認キャンセル時の有給戻しエラー: ' + err.message);
+            }
+          }
+          if (alreadyAddedCancel === '済') {
+            try {
+              removePaidLeaveFromCalendar(employeeNameCancel, startDateCancel, endDateCancel, daysCancel);
+            } catch (err) {
+              Logger.log('カレンダー削除エラー: ' + err.message);
+            }
+            sheet.getRange(rowIndex, 15).setValue('');
+          }
+        }
+        return { success: true, message: '承認をキャンセルし、申請を元に戻しました' };
+      }
       var colNum = 0;
       if (column === 'branch_manager') colNum = 11;
       else if (column === 'executive') colNum = 12;
       else if (column === 'hr') colNum = 13;
       else return { success: false, message: '不正なcolumn: ' + column };
       sheet.getRange(rowIndex, colNum).setValue(value);
-      if ((column === 'branch_manager' || column === 'executive') && value === '承認') {
+      if (column === 'branch_manager' && value === '承認') {
         var rowDataCal = sheet.getRange(rowIndex, 1, rowIndex, 15).getValues()[0];
         var requestTypeCal = rowDataCal[3];
         var employeeNameCal = rowDataCal[2];

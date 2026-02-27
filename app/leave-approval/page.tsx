@@ -139,6 +139,33 @@ export default function LeaveApprovalPage() {
     }
   };
 
+  /** 最終承認済の申請を元に戻す（承認をキャンセル） */
+  const handleCancelApproval = async () => {
+    if (!selected || selected.isCancelled) return;
+    setUpdating(true);
+    try {
+      const res = await fetch("/api/leave-approval", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          rowIndex: selected.rowIndex,
+          column: "cancel_approval",
+          value: true,
+        }),
+      });
+      const data = await res.json();
+      if (!data.success) {
+        alert(data.message || "承認のキャンセルに失敗しました");
+        return;
+      }
+      await fetchList();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "承認のキャンセルに失敗しました");
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   const centerContent = selected ? (
     <LeaveApplicationDetail application={selected} />
   ) : (
@@ -171,6 +198,7 @@ export default function LeaveApprovalPage() {
           application={selected}
           onApproval={handleApproval}
           onCancel={handleCancel}
+          onCancelApproval={handleCancelApproval}
           updating={updating}
         />
       }

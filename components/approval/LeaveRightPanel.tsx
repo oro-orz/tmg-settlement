@@ -13,6 +13,7 @@ import {
   faPaperclip,
   faCircleCheck,
   faBan,
+  faRotateLeft,
 } from "@fortawesome/free-solid-svg-icons";
 import { cn } from "@/lib/utils";
 
@@ -53,6 +54,7 @@ interface LeaveRightPanelProps {
     value: string
   ) => Promise<void>;
   onCancel?: () => Promise<void>;
+  onCancelApproval?: () => Promise<void>;
   updating: boolean;
 }
 
@@ -62,14 +64,22 @@ export function LeaveRightPanel({
   application,
   onApproval,
   onCancel,
+  onCancelApproval,
   updating,
 }: LeaveRightPanelProps) {
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [cancelApprovalModalOpen, setCancelApprovalModalOpen] = useState(false);
 
   const handleCancelConfirm = async () => {
     if (!onCancel) return;
     await onCancel();
     setCancelModalOpen(false);
+  };
+
+  const handleCancelApprovalConfirm = async () => {
+    if (!onCancelApproval) return;
+    await onCancelApproval();
+    setCancelApprovalModalOpen(false);
   };
 
   if (!application) {
@@ -300,6 +310,25 @@ export function LeaveRightPanel({
               ) : null}
             </div>
 
+            {/* 最終承認済の場合: 承認をキャンセル（申請を元に戻す） */}
+            {onCancelApproval &&
+              !application.isCancelled &&
+              application.branchManagerStatus === "承認" &&
+              application.executiveStatus === "承認" &&
+              application.hrStatus === "処理済" && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCancelApprovalModalOpen(true)}
+                  disabled={updating}
+                  className="w-full border-amber-500 text-amber-700 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/30"
+                  title="承認を取りやめ、未承認状態に戻す"
+                >
+                  <FontAwesomeIcon icon={faRotateLeft} className="mr-2" />
+                  承認をキャンセル
+                </Button>
+              )}
+
             {/* 取り消し（総務ボタンの下） */}
             {onCancel && !application.isCancelled && (
               <Button
@@ -348,6 +377,44 @@ export function LeaveRightPanel({
               <Button
                 variant="destructive"
                 onClick={handleCancelConfirm}
+                disabled={updating}
+              >
+                実行する
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 承認をキャンセル確認モーダル */}
+      {cancelApprovalModalOpen && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-4"
+          aria-modal="true"
+          aria-labelledby="cancel-approval-modal-title"
+          role="dialog"
+        >
+          <div className="w-full max-w-md rounded-xl bg-card p-6 shadow-xl border border-border">
+            <h2
+              id="cancel-approval-modal-title"
+              className="text-body font-semibold text-foreground mb-3"
+            >
+              承認をキャンセル
+            </h2>
+            <p className="text-body text-foreground mb-6">
+              承認を取りやめ、申請を未承認の状態に戻します。有給の場合は残日数も戻り、カレンダー登録も削除されます。実行しますか？
+            </p>
+            <div className="flex gap-3 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => setCancelApprovalModalOpen(false)}
+                disabled={updating}
+              >
+                閉じる
+              </Button>
+              <Button
+                className="bg-amber-600 hover:bg-amber-700"
+                onClick={handleCancelApprovalConfirm}
                 disabled={updating}
               >
                 実行する

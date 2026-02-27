@@ -75,7 +75,8 @@ export interface CheckSubmitPayload {
     | "accounting_reject"
     | "send_to_executive"
     | "executive_approve"
-    | "executive_reject";
+    | "executive_reject"
+    | "cancel_approval";
   checker: string;
   comment?: string;
 }
