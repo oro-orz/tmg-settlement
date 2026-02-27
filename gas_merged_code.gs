@@ -122,9 +122,9 @@ function apiSubmitCheck(params) {
         sheet.getRange(targetRow, 24).setValue(comment);
         break;
       case 'cancel_approval':
-        var currentStatus = sheet.getRange(targetRow, 16).getValue();
+        var currentStatus = String(sheet.getRange(targetRow, 16).getValue()).trim();
         if (currentStatus !== '最終承認済') {
-          return apiError('承認をキャンセルできるのは最終承認済の申請のみです');
+          return apiError('承認をキャンセルできるのは最終承認済の申請のみです（現在: ' + (currentStatus || '空') + '）');
         }
         sheet.getRange(targetRow, 16).setValue('未確認');
         sheet.getRange(targetRow, 19).setValue('');

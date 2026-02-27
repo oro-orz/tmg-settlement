@@ -83,7 +83,9 @@ export function ApprovalArea({ application, onSubmitted }: ApprovalAreaProps) {
       onSubmitted();
     } catch (e) {
       console.error(e);
-      alert("承認のキャンセルに失敗しました");
+      const msg =
+        e instanceof Error ? e.message : "承認のキャンセルに失敗しました";
+      alert(msg);
     }
   };
 
