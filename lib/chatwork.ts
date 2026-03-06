@@ -54,16 +54,17 @@ const DASHBOARD_URL = "https://tmg-settlement.vercel.app/dashboard";
 
 /**
  * 請求書経理提出時の通知メッセージ本文を組み立てる。
+ * partnerName: 売掛のときは請求先、買掛・領収書のときは請求元
  */
 export function buildInvoiceSubmittedMessage(params: {
-  vendorName: string;
+  partnerName: string;
   targetMonth: string;
   submitterName: string;
 }): string {
-  const { vendorName, targetMonth, submitterName } = params;
+  const { partnerName, targetMonth, submitterName } = params;
   return [
     "【請求書提出通知】",
-    `取引先: ${vendorName}`,
+    `取引先: ${partnerName}`,
     `対象月: ${targetMonth}`,
     `提出者: ${submitterName}`,
     `確認: ${DASHBOARD_URL}`,

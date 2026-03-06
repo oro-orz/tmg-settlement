@@ -29,7 +29,7 @@ export async function GET() {
     await sendMessageToRoom({
       roomId,
       body: buildInvoiceSubmittedMessage({
-        vendorName: "テスト取引先株式会社",
+        partnerName: "テスト取引先株式会社",
         targetMonth: "2026-03",
         submitterName: "テスト提出者",
       }),

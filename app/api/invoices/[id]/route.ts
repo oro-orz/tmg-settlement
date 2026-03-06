@@ -103,6 +103,10 @@ export async function PATCH(
     // 経理提出時: Chatwork に通知（失敗しても PATCH は成功のまま返す）
     if (body.status === "submitted" && row) {
       const r = row as InvoiceRow;
+      const partnerName =
+        r.type === "received"
+          ? ((r.client_name ?? "").trim() || r.vendor_name)
+          : r.vendor_name;
       try {
         const roomId = process.env.CHATWORK_ROOM_ID ?? "273335165";
         const toIdsRaw = process.env.CHATWORK_TO_IDS ?? "2770625,9991262";
@@ -113,7 +117,7 @@ export async function PATCH(
         await sendMessageToRoom({
           roomId,
           body: buildInvoiceSubmittedMessage({
-            vendorName: r.vendor_name,
+            partnerName,
             targetMonth: r.target_month,
             submitterName: r.submitter_name,
           }),
