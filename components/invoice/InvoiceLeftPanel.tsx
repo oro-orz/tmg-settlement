@@ -80,7 +80,7 @@ export function InvoiceLeftPanel({
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full border border-border rounded-2xl overflow-hidden">
       <div className="p-4 border-b border-border space-y-3">
         <h2 className="text-title font-semibold text-foreground">
           申請一覧 ({filtered.length})
@@ -116,23 +116,25 @@ export function InvoiceLeftPanel({
           </select>
         </div>
       </div>
-      <div className="flex-1 overflow-y-auto p-2">
+      <div className="flex-1 overflow-y-auto">
         {filtered.length === 0 ? (
-          <EmptyState
-            title="申請がありません"
-            description="該当する申請はありません。アップロードから登録してください。"
-          />
+          <div className="p-6">
+            <EmptyState
+              title="申請がありません"
+              description="該当する申請はありません。アップロードから登録してください。"
+            />
+          </div>
         ) : (
-          <ul className="space-y-1">
+          <ul className="divide-y divide-border">
             {filtered.map((inv) => (
               <li key={inv.id}>
                 <button
                   type="button"
                   onClick={() => onSelect(inv)}
-                  className={`w-full text-left rounded-xl px-3 py-2.5 transition-colors ${
+                  className={`w-full text-left px-3 py-2.5 transition-colors border-l-2 ${
                     selectedId === inv.id
-                      ? "bg-primary/10 text-primary border border-primary/30"
-                      : "hover:bg-muted/50 border border-transparent"
+                      ? "bg-primary/10 text-primary border-primary"
+                      : "hover:bg-muted/50 border-transparent"
                   }`}
                 >
                   <p className="font-medium text-foreground truncate">

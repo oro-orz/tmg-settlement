@@ -43,6 +43,7 @@ export default function DashboardPage() {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [aiCheckRunningId, setAiCheckRunningId] = useState<string | null>(null);
   const [aiCheckBulkRunning, setAiCheckBulkRunning] = useState(false);
+  const [notifyAccounting, setNotifyAccounting] = useState(false);
 
   const fetchList = async () => {
     setLoading(true);
@@ -194,6 +195,7 @@ export default function DashboardPage() {
         body: JSON.stringify({
           status: "submitted",
           humanChecked: getHumanChecked(inv),
+          notifyAccounting,
         }),
       });
       const data = await res.json();
@@ -311,9 +313,8 @@ export default function DashboardPage() {
       <div className="p-4 flex-1">
         {(selectedInvoice.status === "ai_ok" || selectedInvoice.status === "needs_fix") ? (
           <div className="space-y-4">
-            <h2 className="text-body font-semibold text-foreground">経理へ提出</h2>
             <p className="text-caption text-muted-foreground">
-              留意項目を全て確認のうえ「経理へ提出」を押してください。
+              留意項目を全て確認のうえ「提出」を押してください。
             </p>
             <div className="space-y-2">
               {HUMAN_CHECK_KEYS.map((key) => (
@@ -330,6 +331,13 @@ export default function DashboardPage() {
                   {HUMAN_CHECK_LABELS[key]}
                 </label>
               ))}
+              <label className="flex items-center gap-2 text-body cursor-pointer">
+                <Checkbox
+                  checked={notifyAccounting}
+                  onCheckedChange={(c) => setNotifyAccounting(c === true)}
+                />
+                経理に通知する
+              </label>
             </div>
             <Button
               className="w-full rounded-xl bg-primary"
@@ -339,7 +347,7 @@ export default function DashboardPage() {
               {submittingId === selectedInvoice.id ? (
                 <LoadingSpinner className="h-4 w-4" />
               ) : (
-                "経理へ提出"
+                "提出"
               )}
             </Button>
           </div>
@@ -396,7 +404,7 @@ export default function DashboardPage() {
         <p className="text-caption font-medium text-foreground mb-2">操作説明</p>
         <ul className="list-disc list-inside space-y-1 text-caption">
           <li>左の一覧から申請を選択すると、中央にPDF・詳細、右に操作が表示されます</li>
-          <li>未処理の申請は、留意5項目にチェックを入れて「経理へ提出」を押してください</li>
+          <li>未処理の申請は、留意5項目にチェックを入れて「提出」を押してください</li>
           <li>経理提出済みの申請は、承認・差し戻しができます</li>
         </ul>
       </div>

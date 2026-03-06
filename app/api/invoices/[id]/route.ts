@@ -100,8 +100,8 @@ export async function PATCH(
       );
     }
 
-    // 経理提出時: Chatwork に通知（失敗しても PATCH は成功のまま返す）
-    if (body.status === "submitted" && row) {
+    // 経理提出時: チェックが入っている場合のみ Chatwork に通知（失敗しても PATCH は成功のまま返す）
+    if (body.status === "submitted" && body.notifyAccounting === true && row) {
       const r = row as InvoiceRow;
       const partnerName =
         r.type === "received"
