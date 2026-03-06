@@ -59,7 +59,7 @@ export function InvoiceApprovalArea({ invoice, onSubmitted }: InvoiceApprovalAre
     <div className="p-4 flex flex-col gap-4">
       <div className="space-y-1.5">
         <label className="text-caption text-muted-foreground block">
-          差し戻し理由（差し戻し時は取引先に通知されます）
+          差し戻し理由
         </label>
         <Textarea
           placeholder="コメントを入力してください"

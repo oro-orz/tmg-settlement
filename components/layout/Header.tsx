@@ -23,12 +23,22 @@ import {
 import { getFirebaseAuth } from "@/lib/firebase";
 import { signOut } from "firebase/auth";
 
+/** 請求書管理用: ステータス別件数 */
+export interface InvoiceCounts {
+  unprocessed: number;
+  submitted: number;
+  approved: number;
+  returned: number;
+}
+
 interface HeaderProps {
   targetMonth: string;
   onMonthChange: (month: string) => void;
   applications: Application[];
   /** ヘッダーに表示するタイトル（未指定時は「ツール申請」） */
   title?: string;
+  /** 請求書管理用。指定時は申請の代わりにこの件数を表示（未処理・経理提出済・承認・差し戻し） */
+  invoiceCounts?: InvoiceCounts;
 }
 
 function countByStatus(applications: Application[]) {
@@ -63,11 +73,17 @@ export function Header({
   onMonthChange,
   applications,
   title = "ツール申請",
+  invoiceCounts,
 }: HeaderProps) {
   const router = useRouter();
   const monthOptions = getMonthOptions(12);
-  const { applied, approved, pending, rejected } =
-    countByStatus(applications);
+  const appCounts = countByStatus(applications);
+
+  const isInvoiceMode = invoiceCounts != null;
+  const unprocessed = isInvoiceMode ? invoiceCounts!.unprocessed : appCounts.applied;
+  const submitted = isInvoiceMode ? invoiceCounts!.submitted : appCounts.pending;
+  const approved = isInvoiceMode ? invoiceCounts!.approved : appCounts.approved;
+  const returned = isInvoiceMode ? invoiceCounts!.returned : appCounts.rejected;
 
   async function handleLogout() {
     try {
@@ -103,21 +119,21 @@ export function Header({
 
           <Card className="px-4 py-2 rounded-xl border border-border bg-card">
             <div className="flex items-center gap-5 text-body-lg">
-              <span className="flex items-center gap-2 text-muted-foreground" title="申請">
+              <span className="flex items-center gap-2 text-muted-foreground" title={isInvoiceMode ? "未処理" : "申請"}>
                 <FontAwesomeIcon icon={faInbox} className="text-primary" />
-                <span className="font-semibold text-foreground">{applied}</span>
+                <span className="font-semibold text-foreground">{unprocessed}</span>
+              </span>
+              <span className="flex items-center gap-2 text-muted-foreground" title={isInvoiceMode ? "経理提出済" : "確認"}>
+                <FontAwesomeIcon icon={faClock} className="text-amber-600" />
+                <span className="font-semibold text-foreground">{submitted}</span>
               </span>
               <span className="flex items-center gap-2 text-muted-foreground" title="承認">
                 <FontAwesomeIcon icon={faCircleCheck} className="text-green-600" />
                 <span className="font-semibold text-foreground">{approved}</span>
               </span>
-              <span className="flex items-center gap-2 text-muted-foreground" title="確認">
-                <FontAwesomeIcon icon={faClock} className="text-amber-600" />
-                <span className="font-semibold text-foreground">{pending}</span>
-              </span>
-              <span className="flex items-center gap-2 text-muted-foreground" title="却下">
+              <span className="flex items-center gap-2 text-muted-foreground" title={isInvoiceMode ? "差し戻し" : "却下"}>
                 <FontAwesomeIcon icon={faBan} className="text-destructive" />
-                <span className="font-semibold text-foreground">{rejected}</span>
+                <span className="font-semibold text-foreground">{returned}</span>
               </span>
             </div>
           </Card>

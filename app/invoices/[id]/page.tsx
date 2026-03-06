@@ -101,7 +101,14 @@ export default function InvoiceDetailPage() {
             <FontAwesomeIcon icon={faPrint} className="text-primary" />
             印刷・共有
           </h1>
-          <div className="rounded-lg border border-border bg-card p-4">
+          <div className="rounded-lg border border-border bg-card p-4 space-y-2">
+            <a
+              href={`/api/invoices/${invoice.id}/pdf?download=1`}
+              className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-4 py-3 font-medium hover:bg-muted mr-2"
+              download
+            >
+              ダウンロード
+            </a>
             <a
               href={pdfUrl}
               target="_blank"
@@ -109,10 +116,10 @@ export default function InvoiceDetailPage() {
               className="inline-flex items-center gap-2 rounded-xl bg-primary text-primary-foreground px-4 py-3 font-medium hover:opacity-90"
             >
               <FontAwesomeIcon icon={faPrint} />
-              PDFを開く
+              印刷・共有
             </a>
             <p className="text-caption text-muted-foreground mt-2">
-              ログイン済みの方が閲覧できます。新しいタブで開きます。
+              ダウンロードは日本語のファイル名で保存されます。印刷・共有は新しいタブで開きます。
             </p>
           </div>
           <div className="rounded-lg border border-border bg-card p-4 space-y-2">

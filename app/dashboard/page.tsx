@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { AppShell } from "@/components/layout/AppShell";
-import { Header } from "@/components/layout/Header";
+import { Header, type InvoiceCounts } from "@/components/layout/Header";
 import { InvoiceLeftPanel } from "@/components/invoice/InvoiceLeftPanel";
 import { InvoiceApprovalArea } from "@/components/invoice/InvoiceApprovalArea";
 import type { Invoice, HumanCheckedItems } from "@/lib/types";
@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/shared/LoadingSpinner";
 import { ConfirmModal } from "@/components/shared/ConfirmModal";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faTrashCan } from "@fortawesome/free-solid-svg-icons";
+import { faDownload, faTrashCan } from "@fortawesome/free-solid-svg-icons";
 
 const HUMAN_CHECK_KEYS: (keyof HumanCheckedItems)[] = [
   "bankBranch",
@@ -44,8 +44,6 @@ export default function DashboardPage() {
     setLoading(true);
     try {
       const params = new URLSearchParams();
-      if (filterStatus === "returned") params.set("status", "returned");
-      if (filterStatus === "approved") params.set("status", "approved");
       if (filterMonth) params.set("targetMonth", filterMonth);
       const res = await fetch(`/api/invoices?${params.toString()}`);
       const data = await res.json();
@@ -65,7 +63,21 @@ export default function DashboardPage() {
 
   useEffect(() => {
     fetchList();
-  }, [filterStatus, filterMonth]);
+  }, [filterMonth]);
+
+  const invoiceCounts: InvoiceCounts = (() => {
+    let unprocessed = 0;
+    let submitted = 0;
+    let approved = 0;
+    let returned = 0;
+    for (const inv of invoices) {
+      if (inv.status === "submitted") submitted++;
+      else if (inv.status === "approved") approved++;
+      else if (inv.status === "returned") returned++;
+      else unprocessed++;
+    }
+    return { unprocessed, submitted, approved, returned };
+  })();
 
   const handleSelectInvoice = (inv: Invoice) => {
     setSelectedInvoice(inv);
@@ -160,6 +172,14 @@ export default function DashboardPage() {
       <div className="flex items-center justify-between flex-shrink-0 mb-3">
         <h1 className="text-xl font-bold text-foreground">請求書詳細</h1>
         <div className="flex items-center gap-2">
+          <a
+            href={`/api/invoices/${selectedInvoice.id}/pdf?download=1`}
+            className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border bg-background px-4 py-2 text-body font-medium hover:bg-muted transition-colors"
+            download
+          >
+            <FontAwesomeIcon icon={faDownload} className="h-4 w-4" />
+            ダウンロード
+          </a>
           <a
             href={`/api/invoices/${selectedInvoice.id}/pdf`}
             target="_blank"
@@ -304,6 +324,7 @@ export default function DashboardPage() {
           targetMonth={filterMonth ?? ""}
           onMonthChange={(m) => setFilterMonth(m || "")}
           applications={[]}
+          invoiceCounts={invoiceCounts}
         />
       }
       left={
