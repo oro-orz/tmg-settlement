@@ -1,4 +1,4 @@
--- 請求先名の修正: 請求元が弊社(Timingood)になっている売掛の請求先を正しい取引先名に更新
+-- 請求先名の入れ替え修正（202603065 で逆に設定されていた場合の是正）
 -- aa971581... → 株式会社TACSEL
 UPDATE public.invoices
 SET client_name = '株式会社TACSEL'

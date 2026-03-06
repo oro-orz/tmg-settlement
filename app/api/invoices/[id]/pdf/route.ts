@@ -21,7 +21,7 @@ export async function GET(request: NextRequest, { params }: Params) {
     const supabase = getServerSupabase();
     const { data: row, error: fetchError } = await supabase
       .from("invoices")
-      .select("file_path, file_name, vendor_name, target_month, type")
+      .select("file_path, file_name, vendor_name, client_name, target_month, type")
       .eq("id", id)
       .single();
 
@@ -34,7 +34,7 @@ export async function GET(request: NextRequest, { params }: Params) {
 
     const r = row as Pick<
       InvoiceRow,
-      "file_path" | "file_name" | "vendor_name" | "target_month" | "type"
+      "file_path" | "file_name" | "vendor_name" | "client_name" | "target_month" | "type"
     >;
     const filePath = r.file_path;
     if (!filePath) {
@@ -68,6 +68,7 @@ export async function GET(request: NextRequest, { params }: Params) {
       const fileName = getInvoiceDownloadFileName({
         fileName: r.file_name,
         vendorName: r.vendor_name,
+        clientName: r.client_name,
         targetMonth: r.target_month,
         type: r.type === "payment" ? "payment" : r.type === "receipt" ? "receipt" : "received",
       });

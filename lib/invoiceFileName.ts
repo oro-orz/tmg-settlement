@@ -54,15 +54,18 @@ export function buildReceiptFileName(
 
 /**
  * ダウンロード用の表示ファイル名（DB の file_name があればそれ、なければ取引先・対象月・種別から生成）
+ * 売掛(received)のときは請求先名(clientName)をファイル名に使う
  */
 export function getInvoiceDownloadFileName(params: {
   fileName: string | null;
   vendorName: string;
+  clientName?: string;
   targetMonth: string;
   type: "received" | "payment" | "receipt";
 }): string {
   if (params.fileName?.trim()) return params.fileName.trim();
+  const receivedName = (params.clientName ?? "").trim() || params.vendorName;
   if (params.type === "payment") return buildPaymentFileName(params.vendorName, params.targetMonth);
   if (params.type === "receipt") return buildReceiptFileName(params.vendorName, params.targetMonth);
-  return buildInvoiceFileName(params.vendorName, params.targetMonth);
+  return buildInvoiceFileName(receivedName, params.targetMonth);
 }

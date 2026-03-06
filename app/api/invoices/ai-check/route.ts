@@ -78,11 +78,12 @@ export async function POST(request: NextRequest) {
 
         const isPayment = row.type === "payment";
         const isReceipt = row.type === "receipt";
+        const receivedName = (clientName ?? "").trim() || vendorName;
         const newFileName = isPayment
           ? buildPaymentFileName(vendorName, extractedMonth)
           : isReceipt
             ? buildReceiptFileName(vendorName, extractedMonth)
-            : buildInvoiceFileName(vendorName, extractedMonth);
+            : buildInvoiceFileName(receivedName, extractedMonth);
 
         // Storage のパスはそのまま（tmp/{id}.pdf）。日本語ファイル名は Storage で問題になるため、
         // 表示・ダウンロード用の file_name のみ DB に保存する。

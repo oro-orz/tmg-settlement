@@ -12,23 +12,23 @@ type Params = { params: Promise<{ id: string }> };
 
 const BUCKET = "invoices";
 
-/** 同一フォルダ内の重複を避けるファイル名と保存先パスを決定 */
+/** 同一フォルダ内の重複を避けるファイル名と保存先パスを決定。売掛は請求先名(partnerName)、買掛・領収書は請求元名を使用 */
 async function resolveFileName(
   supabase: SupabaseClient,
-  vendorName: string,
+  partnerName: string,
   targetMonth: string,
   type: "received" | "payment" | "receipt"
 ): Promise<{ fileName: string; destPath: string }> {
-  const safeVendor = sanitize(vendorName);
-  const folderPath = `${targetMonth}/${safeVendor}`;
+  const safeName = sanitize(partnerName);
+  const folderPath = `${targetMonth}/${safeName}`;
   let version = 1;
   while (true) {
     const fileName =
       type === "payment"
-        ? buildPaymentFileName(vendorName, targetMonth, version)
+        ? buildPaymentFileName(partnerName, targetMonth, version)
         : type === "receipt"
-          ? buildReceiptFileName(vendorName, targetMonth, version)
-          : buildInvoiceFileName(vendorName, targetMonth, version);
+          ? buildReceiptFileName(partnerName, targetMonth, version)
+          : buildInvoiceFileName(partnerName, targetMonth, version);
     const destPath = `${folderPath}/${fileName}`;
 
     const { data } = await supabase.storage.from(BUCKET).list(folderPath);
@@ -73,7 +73,7 @@ export async function POST(
 
     const { data: invoice, error: fetchError } = await supabase
       .from("invoices")
-      .select("id, file_path, vendor_name, target_month, type")
+      .select("id, file_path, vendor_name, client_name, target_month, type")
       .eq("id", id)
       .single();
 
@@ -96,9 +96,13 @@ export async function POST(
       const filePath = invoice.file_path as string | null;
       if (filePath && filePath.startsWith("tmp/")) {
         const type = invoice.type === "payment" ? "payment" : invoice.type === "receipt" ? "receipt" : "received";
+        const partnerName =
+          type === "received"
+            ? ((invoice.client_name ?? "").trim() || invoice.vendor_name)
+            : invoice.vendor_name;
         const { fileName, destPath } = await resolveFileName(
           supabase,
-          invoice.vendor_name,
+          partnerName,
           invoice.target_month,
           type
         );
