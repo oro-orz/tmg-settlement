@@ -44,6 +44,14 @@ function isPublicPath(pathname: string): boolean {
 function isPublicApiPath(pathname: string, method: string): boolean {
   if (pathname.startsWith("/api/invoices/status/")) return true;
   if (pathname === "/api/invoices" && method === "POST") return true;
+  // 開発時のみ: Chatwork テスト通知（認証なしで curl 可能）
+  if (
+    process.env.NODE_ENV === "development" &&
+    pathname === "/api/test-chatwork" &&
+    method === "GET"
+  ) {
+    return true;
+  }
   return false;
 }
 

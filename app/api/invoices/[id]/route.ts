@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSupabase, invoiceRowToInvoice, type InvoiceRow } from "@/lib/supabase";
+import {
+  sendMessageToRoom,
+  buildInvoiceSubmittedMessage,
+} from "@/lib/chatwork";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -94,6 +98,30 @@ export async function PATCH(
         { success: false, message: error.message },
         { status: 500 }
       );
+    }
+
+    // 経理提出時: Chatwork に通知（失敗しても PATCH は成功のまま返す）
+    if (body.status === "submitted" && row) {
+      const r = row as InvoiceRow;
+      try {
+        const roomId = process.env.CHATWORK_ROOM_ID ?? "24949843";
+        const toIdsRaw = process.env.CHATWORK_TO_IDS ?? "2770625,9991262";
+        const toAccountIds = toIdsRaw
+          .split(",")
+          .map((s) => parseInt(s.trim(), 10))
+          .filter((n) => !Number.isNaN(n));
+        await sendMessageToRoom({
+          roomId,
+          body: buildInvoiceSubmittedMessage({
+            vendorName: r.vendor_name,
+            targetMonth: r.target_month,
+            submitterName: r.submitter_name,
+          }),
+          toAccountIds: toAccountIds.length ? toAccountIds : undefined,
+        });
+      } catch (chatworkErr) {
+        console.error("Chatwork notification error:", chatworkErr);
+      }
     }
 
     return NextResponse.json({
