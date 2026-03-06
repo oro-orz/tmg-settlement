@@ -62,7 +62,10 @@ function fileToBase64(file: File): Promise<string> {
   });
 }
 
+type UploadMode = "single" | "bulk";
+
 export default function UploadPage() {
+  const [mode, setMode] = useState<UploadMode>("single");
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -76,6 +79,20 @@ export default function UploadPage() {
   const [submitting, setSubmitting] = useState(false);
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [dragOver, setDragOver] = useState(false);
+
+  const [bulkFiles, setBulkFiles] = useState<File[]>([]);
+  const [bulkSubmitterName, setBulkSubmitterName] = useState("");
+  const [bulkSubmitting, setBulkSubmitting] = useState(false);
+  const [bulkSuccessCount, setBulkSuccessCount] = useState<number | null>(null);
+  const [bulkDragOver, setBulkDragOver] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    fetch("/api/auth/me", { credentials: "include" })
+      .then((res) => res.ok && res.json())
+      .then((data) => setIsLoggedIn(Boolean(data?.user)))
+      .catch(() => setIsLoggedIn(false));
+  }, []);
 
   const pdfBlobUrl = useMemo(() => {
     if (!preview?.pdfBase64) return null;
@@ -190,25 +207,100 @@ export default function UploadPage() {
     setSubmitterName("");
   };
 
+  const handleBulkFiles = (newFiles: FileList | File[]) => {
+    const list = Array.from(newFiles).filter((f) => f.type === "application/pdf");
+    setBulkFiles((prev) => [...prev, ...list]);
+    setError(null);
+  };
+
+  const removeBulkFile = (index: number) => {
+    setBulkFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleBulkSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!bulkSubmitterName.trim()) {
+      setError("担当者名を入力してください");
+      return;
+    }
+    if (bulkFiles.length === 0) {
+      setError("PDFを1件以上選択してください");
+      return;
+    }
+    setError(null);
+    setBulkSubmitting(true);
+    try {
+      const formData = new FormData();
+      formData.set("submitterName", bulkSubmitterName.trim());
+      bulkFiles.forEach((f) => formData.append("files", f));
+      const res = await fetch("/api/invoices/bulk", { method: "POST", body: formData });
+      const data = await res.json();
+      if (!data.success) {
+        throw new Error(data.message ?? "一括提出に失敗しました");
+      }
+      const count = (data.data?.results as { id: string; fileName: string }[])?.length ?? bulkFiles.length;
+      setBulkSuccessCount(count);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "エラーが発生しました");
+    } finally {
+      setBulkSubmitting(false);
+    }
+  };
+
+  const resetBulkFlow = () => {
+    setBulkSuccessCount(null);
+    setBulkFiles([]);
+    setBulkSubmitterName("");
+    setError(null);
+  };
+
   if (invoice) {
     return (
       <UploadLayout title="請求書アップロード">
         <div className="w-full max-w-md rounded-2xl border border-border bg-card p-8 shadow-lg shadow-black/5">
           <h2 className="text-xl font-semibold text-foreground mb-2">提出が完了しました</h2>
           <p className="text-body text-muted-foreground mb-6">請求書を登録しました。</p>
-          <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex flex-col gap-3">
             <button
               type="button"
               onClick={resetFlow}
-              className="flex-1 rounded-xl border border-input bg-background px-4 py-3 text-body font-medium hover:bg-muted/50 transition-colors"
+              className="w-full rounded-xl border border-input bg-background px-4 py-3 text-body font-medium hover:bg-muted/50 transition-colors whitespace-nowrap"
             >
               もう1件アップロード
             </button>
             <Link
-              href="/upload"
-              className="flex-1 rounded-xl bg-primary text-primary-foreground px-4 py-3 text-body font-medium text-center hover:opacity-90 transition-opacity"
+              href={isLoggedIn ? "/dashboard" : "/upload"}
+              className="w-full rounded-xl bg-primary text-primary-foreground px-4 py-3 text-body font-medium text-center hover:opacity-90 transition-opacity whitespace-nowrap block"
             >
-              アップロードTOPへ
+              {isLoggedIn ? "ダッシュボードへ" : "アップロードTOPへ"}
+            </Link>
+          </div>
+        </div>
+      </UploadLayout>
+    );
+  }
+
+  if (bulkSuccessCount !== null) {
+    return (
+      <UploadLayout title="請求書アップロード">
+        <div className="w-full max-w-md rounded-2xl border border-border bg-card p-8 shadow-lg shadow-black/5">
+          <h2 className="text-xl font-semibold text-foreground mb-2">一括提出が完了しました</h2>
+          <p className="text-body text-muted-foreground mb-6">
+            {bulkSuccessCount}件を登録しました。ダッシュボードでAIチェックを実行してください。
+          </p>
+          <div className="flex flex-col gap-3">
+            <button
+              type="button"
+              onClick={resetBulkFlow}
+              className="w-full rounded-xl border border-input bg-background px-4 py-3 text-body font-medium hover:bg-muted/50 transition-colors whitespace-nowrap"
+            >
+              もう一度一括アップロード
+            </button>
+            <Link
+              href={isLoggedIn ? "/dashboard" : "/upload"}
+              className="w-full rounded-xl bg-primary text-primary-foreground px-4 py-3 text-body font-medium text-center hover:opacity-90 transition-opacity whitespace-nowrap block"
+            >
+              {isLoggedIn ? "ダッシュボードへ" : "アップロードTOPへ"}
             </Link>
           </div>
         </div>
@@ -344,71 +436,190 @@ export default function UploadPage() {
   return (
     <UploadLayout title="請求書アップロード">
       <div className="w-full max-w-md rounded-2xl border border-border bg-card p-8 shadow-lg shadow-black/5">
-        <h2 className="text-lg font-semibold text-foreground mb-1">PDFをアップロード</h2>
-        <p className="text-caption text-muted-foreground mb-6">
-          ドラッグ＆ドロップまたはクリックしてファイルを選択
-        </p>
-
-        <form onSubmit={handleAnalyze} className="space-y-5">
-          <div
-            onDragOver={(e) => {
-              e.preventDefault();
-              setDragOver(true);
-            }}
-            onDragLeave={() => setDragOver(false)}
-            onDrop={(e) => {
-              e.preventDefault();
-              setDragOver(false);
-              handleFile(e.dataTransfer.files?.[0] ?? null);
-            }}
-            className={`rounded-xl border-2 border-dashed transition-colors ${
-              dragOver ? "border-primary bg-primary/5" : "border-border bg-muted/30 hover:border-muted-foreground/40"
-            } p-8 flex flex-col items-center justify-center min-h-[180px] cursor-pointer`}
-            onClick={() => document.getElementById("upload-pdf-input")?.click()}
-          >
-            <input
-              id="upload-pdf-input"
-              type="file"
-              accept="application/pdf"
-              className="hidden"
-              onChange={(e) => handleFile(e.target.files?.[0] ?? null)}
-            />
-            {file ? (
-              <>
-                <FontAwesomeIcon icon={faFilePdf} className="h-11 w-11 text-primary mb-2" />
-                <p className="text-body font-medium text-foreground">{file.name}</p>
-                <p className="text-caption text-muted-foreground mt-1">クリックまたは別のPDFをドロップで変更</p>
-              </>
-            ) : (
-              <>
-                <FontAwesomeIcon icon={faCloudArrowUp} className="h-11 w-11 text-muted-foreground mb-2" />
-                <p className="text-body font-medium text-foreground">PDFを選択</p>
-                <p className="text-caption text-muted-foreground mt-1">ドラッグ＆ドロップまたはクリック</p>
-              </>
-            )}
-          </div>
-
-          {error && (
-            <div className="rounded-lg bg-destructive/10 text-destructive px-4 py-2 text-body text-sm">
-              {error}
-            </div>
-          )}
-
+        <div className="flex rounded-lg border border-border bg-muted/30 p-0.5 mb-6">
           <button
-            type="submit"
-            disabled={loading || !file}
-            className="w-full rounded-xl bg-primary text-primary-foreground py-3 font-medium disabled:opacity-50 flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
+            type="button"
+            onClick={() => setMode("single")}
+            className={`flex-1 rounded-md py-2 text-body font-medium transition-colors ${
+              mode === "single"
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+            }`}
           >
-            {loading ? (
-              <>
-                <LoadingSpinner className="h-5 w-5" />
-                読み込み中…
-              </>
-            ) : (
-              "読み込む"
-            )}
+            個別
           </button>
-        </form>
+          <button
+            type="button"
+            onClick={() => setMode("bulk")}
+            className={`flex-1 rounded-md py-2 text-body font-medium transition-colors ${
+              mode === "bulk"
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+            }`}
+          >
+            一括
+          </button>
+        </div>
+
+        {mode === "single" ? (
+          <>
+            <h2 className="text-lg font-semibold text-foreground mb-1">PDFをアップロード</h2>
+            <p className="text-caption text-muted-foreground mb-6">
+              ドラッグ＆ドロップまたはクリックしてファイルを選択
+            </p>
+
+            <form onSubmit={handleAnalyze} className="space-y-5">
+              <div
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setDragOver(true);
+                }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setDragOver(false);
+                  handleFile(e.dataTransfer.files?.[0] ?? null);
+                }}
+                className={`rounded-xl border-2 border-dashed transition-colors ${
+                  dragOver ? "border-primary bg-primary/5" : "border-border bg-muted/30 hover:border-muted-foreground/40"
+                } p-8 flex flex-col items-center justify-center min-h-[180px] cursor-pointer`}
+                onClick={() => document.getElementById("upload-pdf-input")?.click()}
+              >
+                <input
+                  id="upload-pdf-input"
+                  type="file"
+                  accept="application/pdf"
+                  className="hidden"
+                  onChange={(e) => handleFile(e.target.files?.[0] ?? null)}
+                />
+                {file ? (
+                  <>
+                    <FontAwesomeIcon icon={faFilePdf} className="h-11 w-11 text-primary mb-2" />
+                    <p className="text-body font-medium text-foreground">{file.name}</p>
+                    <p className="text-caption text-muted-foreground mt-1">クリックまたは別のPDFをドロップで変更</p>
+                  </>
+                ) : (
+                  <>
+                    <FontAwesomeIcon icon={faCloudArrowUp} className="h-11 w-11 text-muted-foreground mb-2" />
+                    <p className="text-body font-medium text-foreground">PDFを選択</p>
+                    <p className="text-caption text-muted-foreground mt-1">ドラッグ＆ドロップまたはクリック</p>
+                  </>
+                )}
+              </div>
+
+              {error && (
+                <div className="rounded-lg bg-destructive/10 text-destructive px-4 py-2 text-body text-sm">
+                  {error}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading || !file}
+                className="w-full rounded-xl bg-primary text-primary-foreground py-3 font-medium disabled:opacity-50 flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
+              >
+                {loading ? (
+                  <>
+                    <LoadingSpinner className="h-5 w-5" />
+                    読み込み中…
+                  </>
+                ) : (
+                  "読み込む"
+                )}
+              </button>
+            </form>
+          </>
+        ) : (
+          <>
+            <h2 className="text-lg font-semibold text-foreground mb-1">一括アップロード</h2>
+            <p className="text-caption text-muted-foreground mb-4">
+              担当者名を入力し、PDFを複数選択して一括提出します。AIチェックはダッシュボードで実行してください。
+            </p>
+
+            <form onSubmit={handleBulkSubmit} className="space-y-4">
+              <div>
+                <label className="block text-caption text-muted-foreground mb-1">Timingood担当者名（必須）</label>
+                <input
+                  type="text"
+                  value={bulkSubmitterName}
+                  onChange={(e) => setBulkSubmitterName(e.target.value)}
+                  className="w-full rounded-lg border border-input bg-background px-3 py-2 text-body"
+                  placeholder="弊社担当者"
+                />
+              </div>
+
+              <div>
+                <label className="block text-caption text-muted-foreground mb-1">PDF（複数選択可）</label>
+                <div
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setBulkDragOver(true);
+                  }}
+                  onDragLeave={() => setBulkDragOver(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setBulkDragOver(false);
+                    handleBulkFiles(e.dataTransfer.files ?? []);
+                  }}
+                  className={`rounded-xl border-2 border-dashed transition-colors ${
+                    bulkDragOver ? "border-primary bg-primary/5" : "border-border bg-muted/30 hover:border-muted-foreground/40"
+                  } p-6 flex flex-col items-center justify-center min-h-[120px] cursor-pointer`}
+                  onClick={() => document.getElementById("bulk-pdf-input")?.click()}
+                >
+                  <input
+                    id="bulk-pdf-input"
+                    type="file"
+                    accept="application/pdf"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => handleBulkFiles(e.target.files ?? [])}
+                  />
+                  <FontAwesomeIcon icon={faCloudArrowUp} className="h-10 w-10 text-muted-foreground mb-2" />
+                  <p className="text-body font-medium text-foreground">PDFを選択またはドロップ</p>
+                </div>
+                {bulkFiles.length > 0 && (
+                  <ul className="mt-2 space-y-1 max-h-32 overflow-y-auto">
+                    {bulkFiles.map((f, i) => (
+                      <li key={`${f.name}-${i}`} className="flex items-center gap-2 text-body">
+                        <FontAwesomeIcon icon={faFilePdf} className="h-4 w-4 text-primary shrink-0" />
+                        <span className="min-w-0 truncate">{f.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => removeBulkFile(i)}
+                          className="shrink-0 text-muted-foreground hover:text-destructive text-caption"
+                          aria-label="削除"
+                        >
+                          削除
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              {error && (
+                <div className="rounded-lg bg-destructive/10 text-destructive px-4 py-2 text-body text-sm">
+                  {error}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={bulkSubmitting || !bulkSubmitterName.trim() || bulkFiles.length === 0}
+                className="w-full rounded-xl bg-primary text-primary-foreground py-3 font-medium disabled:opacity-50 flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
+              >
+                {bulkSubmitting ? (
+                  <>
+                    <LoadingSpinner className="h-5 w-5" />
+                    一括提出中…
+                  </>
+                ) : (
+                  "一括提出"
+                )}
+              </button>
+            </form>
+          </>
+        )}
       </div>
     </UploadLayout>
   );

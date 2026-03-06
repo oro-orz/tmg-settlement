@@ -5,18 +5,20 @@ import type { Invoice } from "@/lib/types";
 import { LoadingSpinner } from "@/components/shared/LoadingSpinner";
 import { EmptyState } from "@/components/shared/EmptyState";
 
-/** 表示用ステータス: 3種＋取り込み中 */
+/** 表示用ステータス: pending / 取り込み中 / 差し戻し / 承認済み / 未処理 */
 function getDisplayStatus(inv: Invoice): string {
+  if (inv.status === "pending") return "AIチェック未実施";
   if (inv.status === "ai_checking") return "取り込み中";
   if (inv.status === "returned") return "差し戻し";
   if (inv.status === "approved") return "承認済み";
   return "未処理";
 }
 
-/** フィルター用: 未処理=pending, 差し戻し=returned, 承認済み=approved */
+/** フィルター用: すべて / AIチェック未実施 / 未処理 / 差し戻し / 承認済み */
 const FILTER_OPTIONS = [
   { value: "", label: "すべて" },
-  { value: "pending", label: "未処理" },
+  { value: "pending", label: "AIチェック未実施" },
+  { value: "unprocessed", label: "未処理" },
   { value: "returned", label: "差し戻し" },
   { value: "approved", label: "承認済み" },
 ] as const;
@@ -24,6 +26,9 @@ const FILTER_OPTIONS = [
 function filterByDisplayStatus(invoices: Invoice[], filterStatus: string): Invoice[] {
   if (!filterStatus) return invoices;
   if (filterStatus === "pending") {
+    return invoices.filter((inv) => inv.status === "pending");
+  }
+  if (filterStatus === "unprocessed") {
     return invoices.filter((inv) => inv.status !== "returned" && inv.status !== "approved");
   }
   if (filterStatus === "returned") return invoices.filter((inv) => inv.status === "returned");
@@ -123,9 +128,11 @@ export function InvoiceLeftPanel({
                       : "hover:bg-muted/50 border border-transparent"
                   }`}
                 >
-                  <p className="font-medium text-foreground truncate">{inv.vendorName}</p>
+                  <p className="font-medium text-foreground truncate">
+                    {inv.vendorName || inv.fileName || "（AIチェック未実施）"}
+                  </p>
                   <p className="text-caption text-muted-foreground">
-                    {inv.targetMonth} · {getDisplayStatus(inv)}
+                    {inv.targetMonth ? `${inv.targetMonth} · ` : ""}{getDisplayStatus(inv)}
                   </p>
                 </button>
               </li>

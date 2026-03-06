@@ -123,6 +123,7 @@ export interface PaidLeaveListItem {
 // --- 請求書管理（Supabase invoices）---
 
 export type InvoiceStatus =
+  | "pending"
   | "draft"
   | "ai_checking"
   | "needs_fix"

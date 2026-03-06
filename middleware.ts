@@ -44,6 +44,7 @@ function isPublicPath(pathname: string): boolean {
 function isPublicApiPath(pathname: string, method: string): boolean {
   if (pathname.startsWith("/api/invoices/status/")) return true;
   if (pathname === "/api/invoices" && method === "POST") return true;
+  if (pathname === "/api/invoices/bulk" && method === "POST") return true;
   // 開発時のみ: Chatwork テスト通知（認証なしで curl 可能）
   if (
     process.env.NODE_ENV === "development" &&
@@ -58,6 +59,7 @@ function isPublicApiPath(pathname: string, method: string): boolean {
 /** レート制限の対象: 実際の提出（DB保存）のみ。解析（extract-and-check）はカウントしない */
 function isUploadRequest(pathname: string, method: string): boolean {
   if (pathname === "/api/invoices" && method === "POST") return true;
+  if (pathname === "/api/invoices/bulk" && method === "POST") return true;
   return false;
 }
 

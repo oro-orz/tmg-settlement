@@ -39,6 +39,8 @@ export default function DashboardPage() {
   const [humanChecks, setHumanChecks] = useState<Record<string, HumanCheckedItems>>({});
   const [deleteTarget, setDeleteTarget] = useState<Invoice | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [aiCheckRunningId, setAiCheckRunningId] = useState<string | null>(null);
+  const [aiCheckBulkRunning, setAiCheckBulkRunning] = useState(false);
 
   const fetchList = async () => {
     setLoading(true);
@@ -132,6 +134,54 @@ export default function DashboardPage() {
     }
   };
 
+  const pendingInvoices = invoices.filter((inv) => inv.status === "pending");
+
+  const handleRunAiCheck = async (invoiceId: string) => {
+    setAiCheckRunningId(invoiceId);
+    try {
+      const res = await fetch("/api/invoices/ai-check", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ invoiceId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        await fetchList();
+      } else {
+        alert(data.message ?? "AIチェックに失敗しました");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("エラーが発生しました");
+    } finally {
+      setAiCheckRunningId(null);
+    }
+  };
+
+  const handleRunAllPendingChecks = async () => {
+    if (pendingInvoices.length === 0) return;
+    setAiCheckBulkRunning(true);
+    try {
+      for (const inv of pendingInvoices) {
+        const res = await fetch("/api/invoices/ai-check", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ invoiceId: inv.id }),
+        });
+        const data = await res.json();
+        if (!data.success) {
+          alert(`${inv.fileName ?? inv.id}: ${data.message ?? "AIチェックに失敗しました"}`);
+        }
+      }
+      await fetchList();
+    } catch (e) {
+      console.error(e);
+      alert("エラーが発生しました");
+    } finally {
+      setAiCheckBulkRunning(false);
+    }
+  };
+
   const handleSubmitToAccounting = async (inv: Invoice) => {
     if (!canSubmitToAccounting(inv)) return;
     setSubmittingId(inv.id);
@@ -159,13 +209,15 @@ export default function DashboardPage() {
   };
 
   const displayStatusLabel =
-    selectedInvoice?.status === "ai_checking"
-      ? "取り込み中"
-      : selectedInvoice?.status === "returned"
-        ? "差し戻し"
-        : selectedInvoice?.status === "approved"
-          ? "承認済み"
-          : "未処理";
+    selectedInvoice?.status === "pending"
+      ? "AIチェック未実施"
+      : selectedInvoice?.status === "ai_checking"
+        ? "取り込み中"
+        : selectedInvoice?.status === "returned"
+          ? "差し戻し"
+          : selectedInvoice?.status === "approved"
+            ? "承認済み"
+            : "未処理";
 
   const centerContent = selectedInvoice ? (
     <div className="p-4 flex flex-col h-full min-h-0">
@@ -227,12 +279,12 @@ export default function DashboardPage() {
   const rightDetailBlock = selectedInvoice ? (
     <div className="p-4 space-y-4 border-b border-border">
       <div className="space-y-2">
-        <p><span className="text-caption text-muted-foreground">請求元名</span><br />{selectedInvoice.vendorName}</p>
+        <p><span className="text-caption text-muted-foreground">請求元名</span><br />{selectedInvoice.vendorName || (selectedInvoice.status === "pending" ? "—（AIチェック後に表示）" : "—")}</p>
         <p><span className="text-caption text-muted-foreground">Timingood担当者</span><br />{selectedInvoice.submitterName}</p>
         {selectedInvoice.email ? (
           <p><span className="text-caption text-muted-foreground">メール</span><br />{selectedInvoice.email}</p>
         ) : null}
-        <p><span className="text-caption text-muted-foreground">対象月</span><br />{selectedInvoice.targetMonth}</p>
+        <p><span className="text-caption text-muted-foreground">対象月</span><br />{selectedInvoice.targetMonth || (selectedInvoice.status === "pending" ? "—（AIチェック後に表示）" : "—")}</p>
         <p><span className="text-caption text-muted-foreground">ステータス</span><br />{displayStatusLabel}</p>
       </div>
       {selectedInvoice.aiResult && (
@@ -290,6 +342,37 @@ export default function DashboardPage() {
           </div>
         ) : selectedInvoice.status === "submitted" ? (
           <InvoiceApprovalArea invoice={selectedInvoice} onSubmitted={fetchList} />
+        ) : selectedInvoice.status === "pending" ? (
+          <div className="space-y-4">
+            <p className="text-caption text-muted-foreground">
+              一括アップロードされた請求書です。AIチェックを実行すると請求元名・対象月を抽出し、確認項目を判定します。
+            </p>
+            <Button
+              className="w-full rounded-xl bg-primary"
+              disabled={aiCheckRunningId !== null || aiCheckBulkRunning}
+              onClick={() => handleRunAiCheck(selectedInvoice.id)}
+            >
+              {aiCheckRunningId === selectedInvoice.id ? (
+                <LoadingSpinner className="h-4 w-4" />
+              ) : (
+                "AIチェック実行"
+              )}
+            </Button>
+            {pendingInvoices.length > 1 && (
+              <Button
+                variant="outline"
+                className="w-full rounded-xl"
+                disabled={aiCheckRunningId !== null || aiCheckBulkRunning}
+                onClick={handleRunAllPendingChecks}
+              >
+                {aiCheckBulkRunning ? (
+                  <LoadingSpinner className="h-4 w-4" />
+                ) : (
+                  `未チェックを一括実行（${pendingInvoices.length}件）`
+                )}
+              </Button>
+            )}
+          </div>
         ) : (
           <div className="text-body text-muted-foreground">
             <p className="text-caption font-medium text-foreground mb-2">操作説明</p>
@@ -305,13 +388,29 @@ export default function DashboardPage() {
       </div>
     </div>
   ) : (
-    <div className="p-4 text-body text-muted-foreground">
-      <p className="text-caption font-medium text-foreground mb-2">操作説明</p>
-      <ul className="list-disc list-inside space-y-1 text-caption">
-        <li>左の一覧から請求書を選択すると、中央にPDF・詳細、右に操作が表示されます</li>
-        <li>未処理の請求書は、留意5項目にチェックを入れて「経理へ提出」を押してください</li>
-        <li>経理提出済みの請求書は、承認・差し戻しができます</li>
-      </ul>
+    <div className="p-4 flex flex-col gap-4 text-body text-muted-foreground">
+      <div>
+        <p className="text-caption font-medium text-foreground mb-2">操作説明</p>
+        <ul className="list-disc list-inside space-y-1 text-caption">
+          <li>左の一覧から請求書を選択すると、中央にPDF・詳細、右に操作が表示されます</li>
+          <li>未処理の請求書は、留意5項目にチェックを入れて「経理へ提出」を押してください</li>
+          <li>経理提出済みの請求書は、承認・差し戻しができます</li>
+        </ul>
+      </div>
+      {pendingInvoices.length > 0 && (
+        <Button
+          variant="outline"
+          className="w-full rounded-xl"
+          disabled={aiCheckBulkRunning}
+          onClick={handleRunAllPendingChecks}
+        >
+          {aiCheckBulkRunning ? (
+            <LoadingSpinner className="h-4 w-4" />
+          ) : (
+            `未チェックを一括実行（${pendingInvoices.length}件）`
+          )}
+        </Button>
+      )}
     </div>
   );
 
@@ -345,7 +444,7 @@ export default function DashboardPage() {
     <ConfirmModal
       open={deleteTarget !== null}
       title="請求書を削除"
-      message={deleteTarget ? `「${deleteTarget.vendorName}」（${deleteTarget.targetMonth}）を削除しますか？この操作は取り消せません。` : ""}
+      message={deleteTarget ? `「${deleteTarget.vendorName || deleteTarget.fileName || deleteTarget.id}」${deleteTarget.targetMonth ? `（${deleteTarget.targetMonth}）` : ""}を削除しますか？この操作は取り消せません。` : ""}
       confirmLabel="削除する"
       cancelLabel="キャンセル"
       variant="destructive"
