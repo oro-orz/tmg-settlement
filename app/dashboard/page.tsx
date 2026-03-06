@@ -1,0 +1,337 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { AppShell } from "@/components/layout/AppShell";
+import { Header } from "@/components/layout/Header";
+import { InvoiceLeftPanel } from "@/components/invoice/InvoiceLeftPanel";
+import { InvoiceApprovalArea } from "@/components/invoice/InvoiceApprovalArea";
+import type { Invoice, HumanCheckedItems } from "@/lib/types";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@/components/ui/button";
+import { LoadingSpinner } from "@/components/shared/LoadingSpinner";
+import { ConfirmModal } from "@/components/shared/ConfirmModal";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faTrashCan } from "@fortawesome/free-solid-svg-icons";
+
+const HUMAN_CHECK_KEYS: (keyof HumanCheckedItems)[] = [
+  "bankBranch",
+  "accountName",
+  "invoiceNumber",
+  "legalName",
+  "submitterName",
+];
+
+const HUMAN_CHECK_LABELS: Record<keyof HumanCheckedItems, string> = {
+  bankBranch: "銀行名・支店名",
+  accountName: "口座名義",
+  invoiceNumber: "インボイス登録番号",
+  legalName: "法人名の正式表記",
+  submitterName: "請求者名（誤字・表記ゆれ）",
+};
+
+export default function DashboardPage() {
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filterStatus, setFilterStatus] = useState<string>("");
+  const [filterMonth, setFilterMonth] = useState<string>("");
+  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  const [submittingId, setSubmittingId] = useState<string | null>(null);
+  const [humanChecks, setHumanChecks] = useState<Record<string, HumanCheckedItems>>({});
+  const [deleteTarget, setDeleteTarget] = useState<Invoice | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  const fetchList = async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (filterStatus === "returned") params.set("status", "returned");
+      if (filterStatus === "approved") params.set("status", "approved");
+      if (filterMonth) params.set("targetMonth", filterMonth);
+      const res = await fetch(`/api/invoices?${params.toString()}`);
+      const data = await res.json();
+      if (data.success && Array.isArray(data.data)) {
+        const list = data.data as Invoice[];
+        setInvoices(list);
+        setSelectedInvoice((prev) => {
+          if (!prev) return list[0] ?? null;
+          const found = list.find((i) => i.id === prev.id);
+          return found ?? list[0] ?? null;
+        });
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchList();
+  }, [filterStatus, filterMonth]);
+
+  const handleSelectInvoice = (inv: Invoice) => {
+    setSelectedInvoice(inv);
+  };
+
+  const handleHumanCheck = (invoiceId: string, key: keyof HumanCheckedItems, value: boolean) => {
+    setHumanChecks((prev) => {
+      const cur = prev[invoiceId] ?? {
+        bankBranch: false,
+        accountName: false,
+        invoiceNumber: false,
+        legalName: false,
+        submitterName: false,
+      };
+      return { ...prev, [invoiceId]: { ...cur, [key]: value } };
+    });
+  };
+
+  const getHumanChecked = (inv: Invoice): HumanCheckedItems => {
+    return humanChecks[inv.id] ?? inv.humanChecked ?? {
+      bankBranch: false,
+      accountName: false,
+      invoiceNumber: false,
+      legalName: false,
+      submitterName: false,
+    };
+  };
+
+  const canSubmitToAccounting = (inv: Invoice): boolean => {
+    if (inv.status !== "ai_ok" && inv.status !== "needs_fix") return false;
+    const h = getHumanChecked(inv);
+    return HUMAN_CHECK_KEYS.every((k) => h[k] === true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+    setDeleteLoading(true);
+    try {
+      const res = await fetch(`/api/invoices/${deleteTarget.id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (data.success) {
+        setDeleteTarget(null);
+        await fetchList();
+      } else {
+        alert(data.message ?? "削除に失敗しました");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("エラーが発生しました");
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  const handleSubmitToAccounting = async (inv: Invoice) => {
+    if (!canSubmitToAccounting(inv)) return;
+    setSubmittingId(inv.id);
+    try {
+      const res = await fetch(`/api/invoices/${inv.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: "submitted",
+          humanChecked: getHumanChecked(inv),
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        await fetchList();
+      } else {
+        alert(data.message ?? "送信に失敗しました");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("エラーが発生しました");
+    } finally {
+      setSubmittingId(null);
+    }
+  };
+
+  const displayStatusLabel =
+    selectedInvoice?.status === "ai_checking"
+      ? "取り込み中"
+      : selectedInvoice?.status === "returned"
+        ? "差し戻し"
+        : selectedInvoice?.status === "approved"
+          ? "承認済み"
+          : "未処理";
+
+  const centerContent = selectedInvoice ? (
+    <div className="p-4 flex flex-col h-full min-h-0">
+      <div className="flex items-center justify-between flex-shrink-0 mb-3">
+        <h1 className="text-xl font-bold text-foreground">請求書詳細</h1>
+        <div className="flex items-center gap-2">
+          <a
+            href={`/api/invoices/${selectedInvoice.id}/pdf`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center rounded-xl bg-primary text-primary-foreground px-4 py-2 text-body font-medium hover:opacity-90 transition-opacity"
+          >
+            印刷・共有
+          </a>
+          <button
+            type="button"
+            onClick={() => setDeleteTarget(selectedInvoice)}
+            className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-destructive/50 bg-destructive/10 text-destructive px-4 py-2 text-body font-medium hover:bg-destructive/20 transition-colors"
+            aria-label="削除"
+          >
+            <FontAwesomeIcon icon={faTrashCan} className="h-4 w-4" />
+            削除
+          </button>
+        </div>
+      </div>
+      <div className="flex-1 min-h-0 flex flex-col">
+        {selectedInvoice.filePath ? (
+          <div className="rounded-lg border border-border bg-card overflow-hidden flex-1 min-h-[300px] flex flex-col">
+            <p className="text-caption text-muted-foreground px-4 py-2 border-b border-border">PDF</p>
+            <div className="flex-1 min-h-0">
+              <iframe
+                src={`/api/invoices/${selectedInvoice.id}/pdf`}
+                title="請求書PDF"
+                className="w-full h-full min-h-[280px]"
+              />
+            </div>
+          </div>
+        ) : (
+          <div className="flex-1 min-h-[200px] flex items-center justify-center text-muted-foreground text-body">
+            PDFはありません
+          </div>
+        )}
+      </div>
+    </div>
+  ) : (
+    <div className="flex items-center justify-center h-full min-h-[200px] text-body text-muted-foreground">
+      左の一覧から請求書を選択してください
+    </div>
+  );
+
+  const rightDetailBlock = selectedInvoice ? (
+    <div className="p-4 space-y-4 border-b border-border">
+      <div className="space-y-2">
+        <p><span className="text-caption text-muted-foreground">請求元名</span><br />{selectedInvoice.vendorName}</p>
+        <p><span className="text-caption text-muted-foreground">Timingood担当者</span><br />{selectedInvoice.submitterName}</p>
+        {selectedInvoice.email ? (
+          <p><span className="text-caption text-muted-foreground">メール</span><br />{selectedInvoice.email}</p>
+        ) : null}
+        <p><span className="text-caption text-muted-foreground">対象月</span><br />{selectedInvoice.targetMonth}</p>
+        <p><span className="text-caption text-muted-foreground">ステータス</span><br />{displayStatusLabel}</p>
+      </div>
+      {selectedInvoice.aiResult && (
+        <div>
+          <h2 className="text-body font-semibold text-foreground mb-2">確認結果</h2>
+          <ul className="space-y-1 text-body text-muted-foreground">
+            {selectedInvoice.aiResult.checks.map((c) => (
+              <li key={c.id} className={c.ok ? "text-green-600 dark:text-green-400" : "text-destructive"}>
+                {c.label}: {c.ok ? "OK" : (c.reason ?? "NG")}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  ) : null;
+
+  const rightContent = selectedInvoice ? (
+    <div className="flex flex-col h-full overflow-y-auto">
+      {rightDetailBlock}
+      <div className="p-4 flex-1">
+        {(selectedInvoice.status === "ai_ok" || selectedInvoice.status === "needs_fix") ? (
+          <div className="space-y-4">
+            <h2 className="text-body font-semibold text-foreground">経理へ提出</h2>
+            <p className="text-caption text-muted-foreground">
+              留意項目を全て確認のうえ「経理へ提出」を押してください。
+            </p>
+            <div className="space-y-2">
+              {HUMAN_CHECK_KEYS.map((key) => (
+                <label
+                  key={key}
+                  className="flex items-center gap-2 text-body cursor-pointer"
+                >
+                  <Checkbox
+                    checked={getHumanChecked(selectedInvoice)[key]}
+                    onCheckedChange={(c) =>
+                      handleHumanCheck(selectedInvoice.id, key, c === true)
+                    }
+                  />
+                  {HUMAN_CHECK_LABELS[key]}
+                </label>
+              ))}
+            </div>
+            <Button
+              className="w-full rounded-xl bg-primary"
+              disabled={!canSubmitToAccounting(selectedInvoice) || submittingId === selectedInvoice.id}
+              onClick={() => handleSubmitToAccounting(selectedInvoice)}
+            >
+              {submittingId === selectedInvoice.id ? (
+                <LoadingSpinner className="h-4 w-4" />
+              ) : (
+                "経理へ提出"
+              )}
+            </Button>
+          </div>
+        ) : selectedInvoice.status === "submitted" ? (
+          <InvoiceApprovalArea invoice={selectedInvoice} onSubmitted={fetchList} />
+        ) : (
+          <div className="text-body text-muted-foreground">
+            <p className="text-caption font-medium text-foreground mb-2">操作説明</p>
+            <ul className="list-disc list-inside space-y-1 text-caption">
+              {selectedInvoice.status === "ai_checking" || selectedInvoice.status === "draft" ? (
+                <li>取り込み完了後に留意項目の確認と経理提出ができます</li>
+              ) : selectedInvoice.status === "returned" || selectedInvoice.status === "approved" ? (
+                <li>経理レビュー済みです。差し戻し理由等は印刷・共有でPDFを開いて確認できます</li>
+              ) : null}
+            </ul>
+          </div>
+        )}
+      </div>
+    </div>
+  ) : (
+    <div className="p-4 text-body text-muted-foreground">
+      <p className="text-caption font-medium text-foreground mb-2">操作説明</p>
+      <ul className="list-disc list-inside space-y-1 text-caption">
+        <li>左の一覧から請求書を選択すると、中央にPDF・詳細、右に操作が表示されます</li>
+        <li>未処理の請求書は、留意5項目にチェックを入れて「経理へ提出」を押してください</li>
+        <li>経理提出済みの請求書は、承認・差し戻しができます</li>
+      </ul>
+    </div>
+  );
+
+  return (
+    <>
+    <AppShell
+      header={
+        <Header
+          title="請求書管理"
+          targetMonth={filterMonth ?? ""}
+          onMonthChange={(m) => setFilterMonth(m || "")}
+          applications={[]}
+        />
+      }
+      left={
+        <InvoiceLeftPanel
+          invoices={invoices}
+          selectedId={selectedInvoice?.id ?? null}
+          onSelect={handleSelectInvoice}
+          isLoading={loading}
+          filterStatus={filterStatus}
+          filterMonth={filterMonth}
+          onFilterStatus={setFilterStatus}
+          onFilterMonth={setFilterMonth}
+        />
+      }
+      center={centerContent}
+      right={rightContent}
+    />
+    <ConfirmModal
+      open={deleteTarget !== null}
+      title="請求書を削除"
+      message={deleteTarget ? `「${deleteTarget.vendorName}」（${deleteTarget.targetMonth}）を削除しますか？この操作は取り消せません。` : ""}
+      confirmLabel="削除する"
+      cancelLabel="キャンセル"
+      variant="destructive"
+      onConfirm={handleDeleteConfirm}
+      onCancel={() => setDeleteTarget(null)}
+      isLoading={deleteLoading}
+    />
+    </>
+  );
+}

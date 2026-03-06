@@ -42,5 +42,8 @@ Thumbs.db
 firebase-service-account.json
 *-service-account*.json
 
+# Docs（参考・バックアップ用。本システムでは未使用のため追跡しない）
+docs/
+
 # Misc
 *.pem

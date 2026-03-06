@@ -119,3 +119,88 @@ export interface PaidLeaveListItem {
   paidLeaveDays: number | string;
   lastUpdated: string | null;
 }
+
+// --- 請求書管理（Supabase invoices）---
+
+export type InvoiceStatus =
+  | "draft"
+  | "ai_checking"
+  | "needs_fix"
+  | "ai_ok"
+  | "submitted"
+  | "returned"
+  | "approved";
+
+export type InvoiceType = "received" | "payment";
+
+export interface Invoice {
+  id: string;
+  submitterName: string;
+  vendorName: string;
+  email: string;
+  targetMonth: string;
+  filePath: string | null;
+  status: InvoiceStatus;
+  type: InvoiceType;
+  fileName: string | null;
+  aiResult: InvoiceAiResult | null;
+  humanChecked: HumanCheckedItems | null;
+  reviewerComment: string | null;
+  submittedAt: string | null;
+  approvedAt: string | null;
+  createdAt: string;
+}
+
+/** Gemini 請求書チェック結果（9項目＋留意5項目の記載有無） */
+export interface InvoiceAiResult {
+  /** 9項目の判定結果 */
+  checks: InvoiceCheckItem[];
+  /** 留意5項目の記載有無（AI判定） */
+  attention: InvoiceAttentionItem[];
+  /** 総合: 全9項目OKなら true */
+  allChecksOk: boolean;
+  findings: string[];
+  recommendation: string;
+  confidence: number;
+  processingTime?: number;
+}
+
+export interface InvoiceCheckItem {
+  id: string;
+  label: string;
+  ok: boolean;
+  reason?: string;
+}
+
+export interface InvoiceAttentionItem {
+  id: string;
+  label: string;
+  /** 記載ありなら true */
+  hasValue: boolean;
+  /** true の場合、記載なしでも NG ではなく警告扱い */
+  warningOnly?: boolean;
+  reason?: string;
+}
+
+/** 留意5項目のチェックボックス状態（社内担当者が目視確認後にチェック） */
+export interface HumanCheckedItems {
+  bankBranch: boolean;
+  accountName: boolean;
+  invoiceNumber: boolean;
+  legalName: boolean;
+  submitterName: boolean;
+}
+
+export interface InvoiceReviewPayload {
+  invoiceId: string;
+  action: "approve" | "reject";
+  reviewer: string;
+  comment?: string;
+}
+
+/** PDF 解析＋AIチェックの結果（アップロード前プレビュー用） */
+export interface InvoiceExtractResult {
+  vendorName: string;
+  targetMonth: string;
+  aiResult: InvoiceAiResult;
+}

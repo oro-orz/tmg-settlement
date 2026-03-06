@@ -10,8 +10,8 @@ const notoSansJP = Noto_Sans_JP({
 });
 
 export const metadata: Metadata = {
-  title: "TMG精算",
-  description: "TMG精算 承認システム",
+  title: "ツール申請",
+  description: "ツール申請 承認システム",
 };
 
 export default function RootLayout({

@@ -27,6 +27,8 @@ interface HeaderProps {
   targetMonth: string;
   onMonthChange: (month: string) => void;
   applications: Application[];
+  /** ヘッダーに表示するタイトル（未指定時は「ツール申請」） */
+  title?: string;
 }
 
 function countByStatus(applications: Application[]) {
@@ -60,6 +62,7 @@ export function Header({
   targetMonth,
   onMonthChange,
   applications,
+  title = "ツール申請",
 }: HeaderProps) {
   const router = useRouter();
   const monthOptions = getMonthOptions(12);
@@ -81,7 +84,7 @@ export function Header({
     <header className="flex-shrink-0 border-b border-border bg-card px-6 py-4 rounded-b-2xl">
       <div className="flex items-center justify-between gap-4">
         <h1 className="text-heading font-semibold text-foreground">
-          TMG精算
+          {title}
         </h1>
 
         <div className="flex items-center gap-4">

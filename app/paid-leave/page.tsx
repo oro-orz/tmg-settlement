@@ -54,7 +54,7 @@ export default function PaidLeavePage() {
   }, []);
 
   return (
-    <SimpleShell title="有給残数一覧">
+    <SimpleShell title="有給残日数">
       <div className="p-6">
         <Card>
           <CardHeader className="pb-2">

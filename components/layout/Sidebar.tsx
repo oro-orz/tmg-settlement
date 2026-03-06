@@ -2,13 +2,15 @@
 
 import Link from "next/link";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faFileLines, faListCheck, faClipboardCheck, faTableList } from "@fortawesome/free-solid-svg-icons";
+import { faFileLines, faListCheck, faClipboardCheck, faTableList, faFileInvoice, faFolderOpen } from "@fortawesome/free-solid-svg-icons";
 
 const navItems = [
-  { href: "/", icon: faFileLines, label: "TMG精算" },
-  { href: "/ai-check-jobs", icon: faListCheck, label: "AIチェック実行" },
-  { href: "/leave-approval", icon: faClipboardCheck, label: "休暇申請承認" },
-  { href: "/paid-leave", icon: faTableList, label: "有給残数一覧" },
+  { href: "/dashboard", icon: faFileInvoice, label: "請求書管理" },
+  { href: "/archive", icon: faFolderOpen, label: "請求書アーカイブ" },
+  { href: "/leave-approval", icon: faClipboardCheck, label: "休暇申請" },
+  { href: "/paid-leave", icon: faTableList, label: "有給残日数" },
+  { href: "/applications", icon: faFileLines, label: "ツール申請" },
+  { href: "/ai-check-jobs", icon: faListCheck, label: "AIチェック進捗" },
 ];
 
 export function Sidebar() {

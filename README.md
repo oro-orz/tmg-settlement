@@ -100,7 +100,7 @@ http://localhost:3000 にアクセス（未ログイン時は `/login` にリダ
 
 #### GAS code.gsの更新
 
-ファイル群2.md の「17. GAS側の追加コード」を既存の `code.gs` にマージし、Web Appとして再デプロイ。
+`docs/ファイル群2.md` の「17. GAS側の追加コード」を既存の `code.gs` にマージし、Web Appとして再デプロイ。
 
 ## 使い方
 

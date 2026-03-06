@@ -166,7 +166,7 @@ export default function AICheckJobsPage() {
   };
 
   return (
-    <SimpleShell title="AIチェック実行進捗">
+    <SimpleShell title="AIチェック進捗">
       <div className="p-6 max-w-3xl space-y-6">
         <section className="rounded-xl border border-border bg-card p-4 space-y-4">
           <h2 className="text-body-lg font-semibold text-foreground">新規実行</h2>

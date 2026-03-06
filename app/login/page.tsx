@@ -6,6 +6,7 @@ import { getFirebaseAuth } from "@/lib/firebase";
 import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 
 const AUTH_ERROR_CODES = {
   EMPLOYEE_NOT_FOUND: "EMPLOYEE_NOT_FOUND",
@@ -17,11 +18,14 @@ const ERROR_MESSAGES: Record<string, string> = {
   [AUTH_ERROR_CODES.FORBIDDEN]: "権限がないためログインできません",
 };
 
+const IS_DEV = process.env.NODE_ENV === "development";
+
 export default function LoginPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [checkingSession, setCheckingSession] = useState(true);
+  const [devEmail, setDevEmail] = useState("");
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -78,6 +82,35 @@ export default function LoginPage() {
     }
   }
 
+  async function handleDevLogin() {
+    const email = devEmail.trim().toLowerCase();
+    if (!email) {
+      setErrorMessage("メールアドレスを入力してください");
+      return;
+    }
+    setLoading(true);
+    setErrorMessage(null);
+    try {
+      const res = await fetch("/api/auth/dev-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+        credentials: "include",
+      });
+      const data = (await res.json()) as { message?: string };
+      if (res.ok) {
+        router.replace("/");
+        return;
+      }
+      setErrorMessage(data.message ?? "開発用ログインに失敗しました。");
+    } catch (e) {
+      console.error("[login dev]", e);
+      setErrorMessage("開発用ログインでエラーが発生しました。");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   if (checkingSession) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[hsl(var(--background))]">
@@ -90,7 +123,7 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-[hsl(var(--background))] p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle className="text-center">TMG精算 ログイン</CardTitle>
+          <CardTitle className="text-center">ツール申請 ログイン</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {errorMessage && (
@@ -101,8 +134,35 @@ export default function LoginPage() {
               {errorMessage}
             </div>
           )}
+
+          {IS_DEV && (
+            <>
+              <p className="text-sm text-[hsl(var(--muted-foreground))]">
+                開発用（Firebase 不要）。.env.local の ALLOWED_LOGIN_EMAILS に登録したメールを入力してください。
+              </p>
+              <Input
+                type="email"
+                placeholder="例: your@gmail.com"
+                value={devEmail}
+                onChange={(e) => setDevEmail(e.target.value)}
+                className="w-full"
+              />
+              <Button
+                type="button"
+                variant="default"
+                className="w-full"
+                onClick={handleDevLogin}
+                disabled={loading}
+              >
+                {loading ? "ログイン中..." : "開発用ログイン"}
+              </Button>
+              <p className="text-center text-xs text-[hsl(var(--muted-foreground))]">または</p>
+            </>
+          )}
+
           <Button
             type="button"
+            variant={IS_DEV ? "outline" : "default"}
             className="w-full"
             onClick={handleGoogleLogin}
             disabled={loading}

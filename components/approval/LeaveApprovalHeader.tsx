@@ -57,7 +57,7 @@ export function LeaveApprovalHeader({
     <header className="flex-shrink-0 border-b border-border bg-card px-6 py-4 rounded-b-2xl">
       <div className="flex items-center justify-between gap-4">
         <h1 className="text-heading font-semibold text-foreground">
-          休暇申請承認
+          休暇申請
         </h1>
 
         <div className="flex items-center gap-4">
