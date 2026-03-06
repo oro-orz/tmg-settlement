@@ -7,6 +7,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { Header } from "@/components/layout/Header";
 import { InvoiceApprovalArea } from "@/components/invoice/InvoiceApprovalArea";
 import type { Invoice } from "@/lib/types";
+import { getPartnerLabel, getDisplayPartnerName } from "@/lib/invoiceTypeLabels";
 import { LoadingSpinner } from "@/components/shared/LoadingSpinner";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPrint } from "@fortawesome/free-solid-svg-icons";
@@ -123,7 +124,7 @@ export default function InvoiceDetailPage() {
             </p>
           </div>
           <div className="rounded-lg border border-border bg-card p-4 space-y-2">
-            <p><span className="text-caption text-muted-foreground">請求元名</span> {invoice.vendorName}</p>
+            <p><span className="text-caption text-muted-foreground">{getPartnerLabel(invoice.type)}</span> {getDisplayPartnerName(invoice)}</p>
             <p><span className="text-caption text-muted-foreground">Timingood担当者</span> {invoice.submitterName}</p>
             {invoice.email && (
               <p><span className="text-caption text-muted-foreground">メール</span> {invoice.email}</p>

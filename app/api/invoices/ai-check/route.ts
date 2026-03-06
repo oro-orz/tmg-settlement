@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
         const base64 = Buffer.from(arrayBuffer).toString("base64");
 
         const extractResult = await extractAndCheckInvoicePdf(base64);
-        const { vendorName, targetMonth: extractedMonth, aiResult } = extractResult;
+        const { vendorName, clientName, targetMonth: extractedMonth, aiResult } = extractResult;
 
         const isPayment = row.type === "payment";
         const isReceipt = row.type === "receipt";
@@ -90,6 +90,7 @@ export async function POST(request: NextRequest) {
           .from("invoices")
           .update({
             vendor_name: vendorName,
+            client_name: clientName ?? "",
             target_month: extractedMonth,
             file_name: newFileName,
             ai_result: aiResult as unknown as Record<string, unknown>,
@@ -99,7 +100,7 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json({
           success: true,
-          data: { vendorName, targetMonth: extractedMonth, aiResult },
+          data: { vendorName, clientName, targetMonth: extractedMonth, aiResult },
         });
       } catch (pendingErr) {
         await supabase.from("invoices").update({ status: "pending" }).eq("id", id);

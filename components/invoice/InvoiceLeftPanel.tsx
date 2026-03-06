@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { Invoice } from "@/lib/types";
-import { getManagementTypeLabel, MANAGEMENT_TYPE_LABELS } from "@/lib/invoiceTypeLabels";
+import { getManagementTypeLabel, getDisplayPartnerName, MANAGEMENT_TYPE_LABELS } from "@/lib/invoiceTypeLabels";
 import { LoadingSpinner } from "@/components/shared/LoadingSpinner";
 import { EmptyState } from "@/components/shared/EmptyState";
 
@@ -136,7 +136,7 @@ export function InvoiceLeftPanel({
                   }`}
                 >
                   <p className="font-medium text-foreground truncate">
-                    {inv.vendorName || inv.fileName || "（AIチェック未実施）"}
+                    {getDisplayPartnerName(inv)}
                   </p>
                   <p className="text-caption text-muted-foreground">
                     {getManagementTypeLabel(inv.type)}

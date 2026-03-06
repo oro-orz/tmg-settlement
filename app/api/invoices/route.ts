@@ -72,6 +72,7 @@ export async function POST(request: NextRequest) {
       .insert({
         submitter_name: String(submitterName).trim(),
         vendor_name: String(vendorName).trim(),
+        client_name: "",
         email: email != null && String(email).trim() !== "" ? String(email).trim() : "",
         target_month: String(targetMonth).trim().slice(0, 7),
         file_path: null,

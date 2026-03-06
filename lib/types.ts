@@ -138,6 +138,8 @@ export interface Invoice {
   id: string;
   submitterName: string;
   vendorName: string;
+  /** 請求先名（売掛のときの宛先・お客様名） */
+  clientName: string;
   email: string;
   targetMonth: string;
   filePath: string | null;
@@ -202,6 +204,8 @@ export interface InvoiceReviewPayload {
 /** PDF 解析＋AIチェックの結果（アップロード前プレビュー用） */
 export interface InvoiceExtractResult {
   vendorName: string;
+  /** 請求先名（請求書に記載の宛先・お客様名。売掛で使用） */
+  clientName?: string;
   targetMonth: string;
   aiResult: InvoiceAiResult;
 }

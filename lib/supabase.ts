@@ -33,6 +33,7 @@ export interface InvoiceRow {
   id: string;
   submitter_name: string;
   vendor_name: string;
+  client_name?: string;
   email: string;
   target_month: string;
   file_path: string | null;
@@ -53,6 +54,7 @@ export function invoiceRowToInvoice(row: InvoiceRow): Invoice {
     id: row.id,
     submitterName: row.submitter_name,
     vendorName: row.vendor_name,
+    clientName: row.client_name ?? "",
     email: row.email,
     targetMonth: row.target_month,
     filePath: row.file_path,

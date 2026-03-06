@@ -1,4 +1,4 @@
-import type { InvoiceType } from "@/lib/types";
+import type { Invoice, InvoiceType } from "@/lib/types";
 
 /** アップロード画面用ラベル（初心者向け） */
 export const UPLOAD_TYPE_LABELS: Record<InvoiceType, string> = {
@@ -27,4 +27,18 @@ export function getUploadTypeLabel(type: InvoiceType): string {
 
 export function getManagementTypeLabel(type: InvoiceType): string {
   return MANAGEMENT_TYPE_LABELS[type] ?? type;
+}
+
+/** 一覧・詳細で表示する取引先ラベル（種別に応じて請求先 or 請求元） */
+export function getPartnerLabel(type: InvoiceType): "請求先" | "請求元" {
+  return type === "received" ? "請求先" : "請求元";
+}
+
+/** 一覧・詳細で表示する取引先名（売掛＝請求先、買掛・領収書＝請求元） */
+export function getDisplayPartnerName(inv: Invoice, fallback?: string): string {
+  const fallbackVal = fallback ?? "（AIチェック未実施）";
+  if (inv.type === "received") {
+    return (inv.clientName || inv.vendorName || inv.fileName || fallbackVal).trim() || fallbackVal;
+  }
+  return inv.vendorName || inv.fileName || fallbackVal;
 }

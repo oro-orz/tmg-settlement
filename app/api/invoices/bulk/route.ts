@@ -61,6 +61,7 @@ export async function POST(request: Request) {
         id,
         submitter_name: nameStr,
         vendor_name: "",
+        client_name: "",
         target_month: "",
         email: "",
         file_path: filePath,

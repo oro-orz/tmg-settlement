@@ -6,7 +6,7 @@ import { Header, type InvoiceCounts } from "@/components/layout/Header";
 import { InvoiceLeftPanel } from "@/components/invoice/InvoiceLeftPanel";
 import { InvoiceApprovalArea } from "@/components/invoice/InvoiceApprovalArea";
 import type { Invoice, HumanCheckedItems } from "@/lib/types";
-import { getManagementTypeLabel } from "@/lib/invoiceTypeLabels";
+import { getManagementTypeLabel, getDisplayPartnerName, getPartnerLabel } from "@/lib/invoiceTypeLabels";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/shared/LoadingSpinner";
@@ -281,7 +281,7 @@ export default function DashboardPage() {
   const rightDetailBlock = selectedInvoice ? (
     <div className="p-4 space-y-4 border-b border-border">
       <div className="space-y-2">
-        <p><span className="text-caption text-muted-foreground">請求元名</span><br />{selectedInvoice.vendorName || (selectedInvoice.status === "pending" ? "—（AIチェック後に表示）" : "—")}</p>
+        <p><span className="text-caption text-muted-foreground">{getPartnerLabel(selectedInvoice.type)}</span><br />{getDisplayPartnerName(selectedInvoice, selectedInvoice.status === "pending" ? "—（AIチェック後に表示）" : "—")}</p>
         <p><span className="text-caption text-muted-foreground">Timingood担当者</span><br />{selectedInvoice.submitterName}</p>
         {selectedInvoice.email ? (
           <p><span className="text-caption text-muted-foreground">メール</span><br />{selectedInvoice.email}</p>
@@ -447,7 +447,7 @@ export default function DashboardPage() {
     <ConfirmModal
       open={deleteTarget !== null}
       title="申請を削除"
-      message={deleteTarget ? `「${deleteTarget.vendorName || deleteTarget.fileName || deleteTarget.id}」${deleteTarget.targetMonth ? `（${deleteTarget.targetMonth}）` : ""}を削除しますか？この操作は取り消せません。` : ""}
+      message={deleteTarget ? `「${getDisplayPartnerName(deleteTarget, deleteTarget.id)}」${deleteTarget.targetMonth ? `（${deleteTarget.targetMonth}）` : ""}を削除しますか？この操作は取り消せません。` : ""}
       confirmLabel="削除する"
       cancelLabel="キャンセル"
       variant="destructive"

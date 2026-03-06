@@ -5,6 +5,7 @@ import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
 import { Header } from "@/components/layout/Header";
 import type { Invoice } from "@/lib/types";
+import { getDisplayPartnerName } from "@/lib/invoiceTypeLabels";
 import { LoadingSpinner } from "@/components/shared/LoadingSpinner";
 
 export default function ArchivePage() {
@@ -81,7 +82,7 @@ export default function ArchivePage() {
                   <ul className="space-y-2">
                     {byMonth[month].map((inv) => (
                       <li key={inv.id} className="flex items-center justify-between">
-                        <span className="text-body">{inv.vendorName}</span>
+                        <span className="text-body">{getDisplayPartnerName(inv)}</span>
                         <Link
                           href={`/invoices/${inv.id}`}
                           className="text-body text-primary hover:underline"
