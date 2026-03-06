@@ -6,8 +6,11 @@ export async function POST(request: Request) {
   try {
     const formData = await request.formData();
     const submitterName = formData.get("submitterName");
-    const email = formData.get("email");
+    const typeRaw = formData.get("type");
     const files = formData.getAll("files") as File[];
+
+    const type =
+      typeRaw === "payment" || typeRaw === "receipt" ? typeRaw : "received";
 
     const nameStr =
       submitterName != null && typeof submitterName === "string"
@@ -19,11 +22,6 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
-
-    const emailStr =
-      email != null && typeof email === "string" && String(email).trim() !== ""
-        ? String(email).trim()
-        : "";
 
     const validFiles = files.filter(
       (f): f is File => f instanceof File && f.type === "application/pdf"
@@ -64,10 +62,10 @@ export async function POST(request: Request) {
         submitter_name: nameStr,
         vendor_name: "",
         target_month: "",
-        email: emailStr,
+        email: "",
         file_path: filePath,
         file_name: file.name,
-        type: "received",
+        type,
         status: "pending",
       });
 

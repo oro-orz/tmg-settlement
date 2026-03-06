@@ -5,8 +5,8 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faFileLines, faListCheck, faClipboardCheck, faTableList, faFileInvoice, faFolderOpen } from "@fortawesome/free-solid-svg-icons";
 
 const navItems = [
-  { href: "/dashboard", icon: faFileInvoice, label: "請求書管理" },
-  { href: "/archive", icon: faFolderOpen, label: "請求書アーカイブ" },
+  { href: "/dashboard", icon: faFileInvoice, label: "経理管理" },
+  { href: "/archive", icon: faFolderOpen, label: "経理アーカイブ" },
   { href: "/leave-approval", icon: faClipboardCheck, label: "休暇申請" },
   { href: "/paid-leave", icon: faTableList, label: "有給残日数" },
   { href: "/applications", icon: faFileLines, label: "ツール申請" },

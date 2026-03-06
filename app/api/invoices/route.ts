@@ -52,6 +52,7 @@ export async function POST(request: NextRequest) {
       email,
       targetMonth,
       pdfBase64,
+      type: bodyType,
     } = body;
 
     if (!submitterName || !vendorName || !targetMonth || !pdfBase64) {
@@ -60,6 +61,9 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    const type =
+      bodyType === "payment" || bodyType === "receipt" ? bodyType : "received";
 
     const supabase = getServerSupabase();
 
@@ -72,6 +76,7 @@ export async function POST(request: NextRequest) {
         target_month: String(targetMonth).trim().slice(0, 7),
         file_path: null,
         status: "draft",
+        type,
       })
       .select("id")
       .single();

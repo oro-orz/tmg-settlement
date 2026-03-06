@@ -3,7 +3,8 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import type { Invoice, InvoiceExtractResult, InvoiceAiResult } from "@/lib/types";
+import type { Invoice, InvoiceExtractResult, InvoiceAiResult, InvoiceType } from "@/lib/types";
+import { UPLOAD_TYPE_OPTIONS } from "@/lib/invoiceTypeLabels";
 import { LoadingSpinner } from "@/components/shared/LoadingSpinner";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faFilePdf, faCloudArrowUp } from "@fortawesome/free-solid-svg-icons";
@@ -85,6 +86,8 @@ export default function UploadPage() {
   const [bulkSubmitting, setBulkSubmitting] = useState(false);
   const [bulkSuccessCount, setBulkSuccessCount] = useState<number | null>(null);
   const [bulkDragOver, setBulkDragOver] = useState(false);
+  const [documentType, setDocumentType] = useState<InvoiceType>("received");
+  const [bulkDocumentType, setBulkDocumentType] = useState<InvoiceType>("received");
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -173,6 +176,7 @@ export default function UploadPage() {
           vendorName: vendorName.trim(),
           targetMonth: targetMonth.trim().slice(0, 7),
           pdfBase64: preview.pdfBase64,
+          type: documentType,
         }),
       });
       const data = await res.json();
@@ -205,6 +209,7 @@ export default function UploadPage() {
     setVendorName("");
     setTargetMonth("");
     setSubmitterName("");
+    setDocumentType("received");
   };
 
   const handleBulkFiles = (newFiles: FileList | File[]) => {
@@ -232,6 +237,7 @@ export default function UploadPage() {
     try {
       const formData = new FormData();
       formData.set("submitterName", bulkSubmitterName.trim());
+      formData.set("type", bulkDocumentType);
       bulkFiles.forEach((f) => formData.append("files", f));
       const res = await fetch("/api/invoices/bulk", { method: "POST", body: formData });
       const data = await res.json();
@@ -251,12 +257,13 @@ export default function UploadPage() {
     setBulkSuccessCount(null);
     setBulkFiles([]);
     setBulkSubmitterName("");
+    setBulkDocumentType("received");
     setError(null);
   };
 
   if (invoice) {
     return (
-      <UploadLayout title="請求書アップロード">
+      <UploadLayout title="請求書・領収書を申請する">
         <div className="w-full max-w-md rounded-2xl border border-border bg-card p-8 shadow-lg shadow-black/5">
           <h2 className="text-xl font-semibold text-foreground mb-2">提出が完了しました</h2>
           <p className="text-body text-muted-foreground mb-6">請求書を登録しました。</p>
@@ -282,7 +289,7 @@ export default function UploadPage() {
 
   if (bulkSuccessCount !== null) {
     return (
-      <UploadLayout title="請求書アップロード">
+      <UploadLayout title="請求書・領収書を申請する">
         <div className="w-full max-w-md rounded-2xl border border-border bg-card p-8 shadow-lg shadow-black/5">
           <h2 className="text-xl font-semibold text-foreground mb-2">一括提出が完了しました</h2>
           <p className="text-body text-muted-foreground mb-6">
@@ -434,7 +441,7 @@ export default function UploadPage() {
   }
 
   return (
-    <UploadLayout title="請求書アップロード">
+    <UploadLayout title="請求書・領収書を申請する">
       <div className="w-full max-w-md rounded-2xl border border-border bg-card p-8 shadow-lg shadow-black/5">
         <div className="flex rounded-lg border border-border bg-muted/30 p-0.5 mb-6">
           <button
@@ -464,11 +471,23 @@ export default function UploadPage() {
         {mode === "single" ? (
           <>
             <h2 className="text-lg font-semibold text-foreground mb-1">PDFをアップロード</h2>
-            <p className="text-caption text-muted-foreground mb-6">
+            <p className="text-caption text-muted-foreground mb-4">
               ドラッグ＆ドロップまたはクリックしてファイルを選択
             </p>
 
             <form onSubmit={handleAnalyze} className="space-y-5">
+              <div>
+                <label className="block text-caption text-muted-foreground mb-1">種別</label>
+                <select
+                  value={documentType}
+                  onChange={(e) => setDocumentType(e.target.value as InvoiceType)}
+                  className="w-full rounded-lg border border-input bg-background px-3 py-2 text-body"
+                >
+                  {UPLOAD_TYPE_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
               <div
                 onDragOver={(e) => {
                   e.preventDefault();
@@ -537,6 +556,18 @@ export default function UploadPage() {
             </p>
 
             <form onSubmit={handleBulkSubmit} className="space-y-4">
+              <div>
+                <label className="block text-caption text-muted-foreground mb-1">種別</label>
+                <select
+                  value={bulkDocumentType}
+                  onChange={(e) => setBulkDocumentType(e.target.value as InvoiceType)}
+                  className="w-full rounded-lg border border-input bg-background px-3 py-2 text-body"
+                >
+                  {UPLOAD_TYPE_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
               <div>
                 <label className="block text-caption text-muted-foreground mb-1">Timingood担当者名（必須）</label>
                 <input

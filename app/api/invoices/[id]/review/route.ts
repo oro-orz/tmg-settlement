@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   buildInvoiceFileName,
   buildPaymentFileName,
+  buildReceiptFileName,
   sanitize,
 } from "@/lib/invoiceFileName";
 import { getServerSupabase, invoiceRowToInvoice, type InvoiceRow } from "@/lib/supabase";
@@ -16,15 +17,18 @@ async function resolveFileName(
   supabase: SupabaseClient,
   vendorName: string,
   targetMonth: string,
-  isPayment: boolean
+  type: "received" | "payment" | "receipt"
 ): Promise<{ fileName: string; destPath: string }> {
   const safeVendor = sanitize(vendorName);
   const folderPath = `${targetMonth}/${safeVendor}`;
   let version = 1;
   while (true) {
-    const fileName = isPayment
-      ? buildPaymentFileName(vendorName, targetMonth, version)
-      : buildInvoiceFileName(vendorName, targetMonth, version);
+    const fileName =
+      type === "payment"
+        ? buildPaymentFileName(vendorName, targetMonth, version)
+        : type === "receipt"
+          ? buildReceiptFileName(vendorName, targetMonth, version)
+          : buildInvoiceFileName(vendorName, targetMonth, version);
     const destPath = `${folderPath}/${fileName}`;
 
     const { data } = await supabase.storage.from(BUCKET).list(folderPath);
@@ -91,12 +95,12 @@ export async function POST(
 
       const filePath = invoice.file_path as string | null;
       if (filePath && filePath.startsWith("tmp/")) {
-        const isPayment = invoice.type === "payment";
+        const type = invoice.type === "payment" ? "payment" : invoice.type === "receipt" ? "receipt" : "received";
         const { fileName, destPath } = await resolveFileName(
           supabase,
           invoice.vendor_name,
           invoice.target_month,
-          isPayment
+          type
         );
 
         const { error: copyError } = await supabase.storage

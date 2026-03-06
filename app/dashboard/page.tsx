@@ -6,6 +6,7 @@ import { Header, type InvoiceCounts } from "@/components/layout/Header";
 import { InvoiceLeftPanel } from "@/components/invoice/InvoiceLeftPanel";
 import { InvoiceApprovalArea } from "@/components/invoice/InvoiceApprovalArea";
 import type { Invoice, HumanCheckedItems } from "@/lib/types";
+import { getManagementTypeLabel } from "@/lib/invoiceTypeLabels";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/shared/LoadingSpinner";
@@ -33,6 +34,7 @@ export default function DashboardPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<string>("");
+  const [filterType, setFilterType] = useState<string>("");
   const [filterMonth, setFilterMonth] = useState<string>("");
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [submittingId, setSubmittingId] = useState<string | null>(null);
@@ -222,7 +224,7 @@ export default function DashboardPage() {
   const centerContent = selectedInvoice ? (
     <div className="p-4 flex flex-col h-full min-h-0">
       <div className="flex items-center justify-between flex-shrink-0 mb-3">
-        <h1 className="text-xl font-bold text-foreground">請求書詳細</h1>
+        <h1 className="text-xl font-bold text-foreground">申請詳細</h1>
         <div className="flex items-center gap-2">
           <a
             href={`/api/invoices/${selectedInvoice.id}/pdf?download=1`}
@@ -236,7 +238,7 @@ export default function DashboardPage() {
             href={`/api/invoices/${selectedInvoice.id}/pdf`}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center justify-center rounded-xl bg-primary text-primary-foreground px-4 py-2 text-body font-medium hover:opacity-90 transition-opacity"
+            className="inline-flex items-center justify-center rounded-xl border border-primary text-primary px-4 py-2 text-body font-medium hover:bg-primary/5 transition-colors"
           >
             印刷・共有
           </a>
@@ -272,7 +274,7 @@ export default function DashboardPage() {
     </div>
   ) : (
     <div className="flex items-center justify-center h-full min-h-[200px] text-body text-muted-foreground">
-      左の一覧から請求書を選択してください
+      左の一覧から申請を選択してください
     </div>
   );
 
@@ -285,6 +287,7 @@ export default function DashboardPage() {
           <p><span className="text-caption text-muted-foreground">メール</span><br />{selectedInvoice.email}</p>
         ) : null}
         <p><span className="text-caption text-muted-foreground">対象月</span><br />{selectedInvoice.targetMonth || (selectedInvoice.status === "pending" ? "—（AIチェック後に表示）" : "—")}</p>
+        <p><span className="text-caption text-muted-foreground">種別</span><br />{getManagementTypeLabel(selectedInvoice.type)}</p>
         <p><span className="text-caption text-muted-foreground">ステータス</span><br />{displayStatusLabel}</p>
       </div>
       {selectedInvoice.aiResult && (
@@ -345,7 +348,7 @@ export default function DashboardPage() {
         ) : selectedInvoice.status === "pending" ? (
           <div className="space-y-4">
             <p className="text-caption text-muted-foreground">
-              一括アップロードされた請求書です。AIチェックを実行すると請求元名・対象月を抽出し、確認項目を判定します。
+              一括アップロードされた申請です。AIチェックを実行すると請求元名・対象月を抽出し、確認項目を判定します。
             </p>
             <Button
               className="w-full rounded-xl bg-primary"
@@ -392,9 +395,9 @@ export default function DashboardPage() {
       <div>
         <p className="text-caption font-medium text-foreground mb-2">操作説明</p>
         <ul className="list-disc list-inside space-y-1 text-caption">
-          <li>左の一覧から請求書を選択すると、中央にPDF・詳細、右に操作が表示されます</li>
-          <li>未処理の請求書は、留意5項目にチェックを入れて「経理へ提出」を押してください</li>
-          <li>経理提出済みの請求書は、承認・差し戻しができます</li>
+          <li>左の一覧から申請を選択すると、中央にPDF・詳細、右に操作が表示されます</li>
+          <li>未処理の申請は、留意5項目にチェックを入れて「経理へ提出」を押してください</li>
+          <li>経理提出済みの申請は、承認・差し戻しができます</li>
         </ul>
       </div>
       {pendingInvoices.length > 0 && (
@@ -419,7 +422,7 @@ export default function DashboardPage() {
     <AppShell
       header={
         <Header
-          title="請求書管理"
+          title="経理管理"
           targetMonth={filterMonth ?? ""}
           onMonthChange={(m) => setFilterMonth(m || "")}
           applications={[]}
@@ -433,9 +436,9 @@ export default function DashboardPage() {
           onSelect={handleSelectInvoice}
           isLoading={loading}
           filterStatus={filterStatus}
-          filterMonth={filterMonth}
+          filterType={filterType}
           onFilterStatus={setFilterStatus}
-          onFilterMonth={setFilterMonth}
+          onFilterType={setFilterType}
         />
       }
       center={centerContent}
@@ -443,7 +446,7 @@ export default function DashboardPage() {
     />
     <ConfirmModal
       open={deleteTarget !== null}
-      title="請求書を削除"
+      title="申請を削除"
       message={deleteTarget ? `「${deleteTarget.vendorName || deleteTarget.fileName || deleteTarget.id}」${deleteTarget.targetMonth ? `（${deleteTarget.targetMonth}）` : ""}を削除しますか？この操作は取り消せません。` : ""}
       confirmLabel="削除する"
       cancelLabel="キャンセル"

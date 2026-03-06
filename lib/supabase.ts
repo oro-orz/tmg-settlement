@@ -57,7 +57,7 @@ export function invoiceRowToInvoice(row: InvoiceRow): Invoice {
     targetMonth: row.target_month,
     filePath: row.file_path,
     status: row.status as InvoiceStatus,
-    type: (row.type === "payment" ? "payment" : "received") as Invoice["type"],
+    type: (row.type === "payment" ? "payment" : row.type === "receipt" ? "receipt" : "received") as Invoice["type"],
     fileName: row.file_name ?? null,
     aiResult: row.ai_result as InvoiceAiResult | null,
     humanChecked: row.human_checked as HumanCheckedItems | null,

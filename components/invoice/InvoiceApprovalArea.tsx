@@ -50,7 +50,7 @@ export function InvoiceApprovalArea({ invoice, onSubmitted }: InvoiceApprovalAre
   if (invoice.status !== "submitted") {
     return (
       <div className="p-4 text-body text-muted-foreground">
-        経理提出済みの請求書のみ承認・差し戻しできます。
+        経理提出済みの申請のみ承認・差し戻しできます。
       </div>
     );
   }

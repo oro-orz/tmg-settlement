@@ -132,7 +132,7 @@ export type InvoiceStatus =
   | "returned"
   | "approved";
 
-export type InvoiceType = "received" | "payment";
+export type InvoiceType = "received" | "payment" | "receipt";
 
 export interface Invoice {
   id: string;

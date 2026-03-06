@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import type { Invoice } from "@/lib/types";
+import { getManagementTypeLabel, MANAGEMENT_TYPE_LABELS } from "@/lib/invoiceTypeLabels";
 import { LoadingSpinner } from "@/components/shared/LoadingSpinner";
 import { EmptyState } from "@/components/shared/EmptyState";
 
@@ -23,6 +24,12 @@ const FILTER_OPTIONS = [
   { value: "approved", label: "承認済み" },
 ] as const;
 
+/** 種別フィルター用 */
+const TYPE_FILTER_OPTIONS: { value: string; label: string }[] = [
+  { value: "", label: "すべて" },
+  ...(Object.entries(MANAGEMENT_TYPE_LABELS).map(([value, label]) => ({ value, label }))),
+];
+
 function filterByDisplayStatus(invoices: Invoice[], filterStatus: string): Invoice[] {
   if (!filterStatus) return invoices;
   if (filterStatus === "pending") {
@@ -36,15 +43,20 @@ function filterByDisplayStatus(invoices: Invoice[], filterStatus: string): Invoi
   return invoices;
 }
 
+function filterByType(invoices: Invoice[], filterType: string): Invoice[] {
+  if (!filterType) return invoices;
+  return invoices.filter((inv) => inv.type === filterType);
+}
+
 interface InvoiceLeftPanelProps {
   invoices: Invoice[];
   selectedId: string | null;
   onSelect: (inv: Invoice) => void;
   isLoading: boolean;
   filterStatus: string;
-  filterMonth: string;
+  filterType: string;
   onFilterStatus: (v: string) => void;
-  onFilterMonth: (v: string) => void;
+  onFilterType: (v: string) => void;
 }
 
 export function InvoiceLeftPanel({
@@ -53,15 +65,11 @@ export function InvoiceLeftPanel({
   onSelect,
   isLoading,
   filterStatus,
-  filterMonth,
+  filterType,
   onFilterStatus,
-  onFilterMonth,
+  onFilterType,
 }: InvoiceLeftPanelProps) {
-  const months = Array.from(
-    new Set(invoices.map((i) => i.targetMonth).filter(Boolean))
-  ).sort();
-
-  const filtered = filterByDisplayStatus(invoices, filterStatus);
+  const filtered = filterByType(filterByDisplayStatus(invoices, filterStatus), filterType);
 
   if (isLoading) {
     return (
@@ -75,8 +83,14 @@ export function InvoiceLeftPanel({
     <div className="flex flex-col h-full">
       <div className="p-4 border-b border-border space-y-3">
         <h2 className="text-title font-semibold text-foreground">
-          請求書一覧 ({filtered.length})
+          申請一覧 ({filtered.length})
         </h2>
+        <Link
+          href="/upload"
+          className="block w-full text-center rounded-xl bg-primary text-primary-foreground py-2 text-body font-medium hover:opacity-90 transition-opacity"
+        >
+          アップロード
+        </Link>
         <div>
           <label className="block text-caption text-muted-foreground mb-1">ステータス</label>
           <select
@@ -90,30 +104,23 @@ export function InvoiceLeftPanel({
           </select>
         </div>
         <div>
-          <label className="block text-caption text-muted-foreground mb-1">対象月</label>
+          <label className="block text-caption text-muted-foreground mb-1">種別</label>
           <select
-            value={filterMonth}
-            onChange={(e) => onFilterMonth(e.target.value)}
+            value={filterType}
+            onChange={(e) => onFilterType(e.target.value)}
             className="w-full rounded-md border border-input bg-background px-3 py-2 text-body"
           >
-            <option value="">すべて</option>
-            {months.map((m) => (
-              <option key={m} value={m}>{m}</option>
+            {TYPE_FILTER_OPTIONS.map((opt) => (
+              <option key={opt.value || "all"} value={opt.value}>{opt.label}</option>
             ))}
           </select>
         </div>
-        <Link
-          href="/upload"
-          className="block w-full text-center rounded-xl border border-primary text-primary py-2 text-body hover:bg-primary/5"
-        >
-          アップロード
-        </Link>
       </div>
       <div className="flex-1 overflow-y-auto p-2">
         {filtered.length === 0 ? (
           <EmptyState
-            title="請求書がありません"
-            description="該当する請求書はありません。アップロードから登録してください。"
+            title="申請がありません"
+            description="該当する申請はありません。アップロードから登録してください。"
           />
         ) : (
           <ul className="space-y-1">
@@ -132,7 +139,8 @@ export function InvoiceLeftPanel({
                     {inv.vendorName || inv.fileName || "（AIチェック未実施）"}
                   </p>
                   <p className="text-caption text-muted-foreground">
-                    {inv.targetMonth ? `${inv.targetMonth} · ` : ""}{getDisplayStatus(inv)}
+                    {getManagementTypeLabel(inv.type)}
+                    {inv.targetMonth ? ` · ${inv.targetMonth}` : ""} · {getDisplayStatus(inv)}
                   </p>
                 </button>
               </li>

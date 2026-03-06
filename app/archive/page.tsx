@@ -39,7 +39,7 @@ export default function ArchivePage() {
     <AppShell
       header={
         <Header
-          title="請求書アーカイブ"
+          title="経理アーカイブ"
           targetMonth={filterMonth}
           onMonthChange={setFilterMonth}
           applications={[]}
@@ -51,7 +51,7 @@ export default function ArchivePage() {
             href="/dashboard"
             className="text-body text-primary hover:underline"
           >
-            ← 請求書管理
+            ← 経理管理
           </Link>
           <div className="mt-4">
             <label className="block text-caption text-muted-foreground mb-1">対象月で絞り込み</label>
@@ -66,13 +66,13 @@ export default function ArchivePage() {
       }
       center={
         <div className="p-4">
-          <h1 className="text-xl font-bold text-foreground mb-4">承認済み請求書アーカイブ</h1>
+          <h1 className="text-xl font-bold text-foreground mb-4">承認済み申請アーカイブ</h1>
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <LoadingSpinner className="h-8 w-8" />
             </div>
           ) : months.length === 0 ? (
-            <p className="text-body text-muted-foreground">承認済みの請求書はまだありません</p>
+            <p className="text-body text-muted-foreground">承認済みの申請はまだありません</p>
           ) : (
             <div className="space-y-6">
               {months.map((month) => (

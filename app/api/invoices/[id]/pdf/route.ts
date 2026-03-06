@@ -69,7 +69,7 @@ export async function GET(request: NextRequest, { params }: Params) {
         fileName: r.file_name,
         vendorName: r.vendor_name,
         targetMonth: r.target_month,
-        type: r.type === "payment" ? "payment" : "received",
+        type: r.type === "payment" ? "payment" : r.type === "receipt" ? "receipt" : "received",
       });
       return new NextResponse(arrayBuffer, {
         status: 200,

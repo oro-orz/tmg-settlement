@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkInvoicePdf, extractAndCheckInvoicePdf } from "@/lib/invoiceAiChecker";
-import { buildInvoiceFileName, buildPaymentFileName } from "@/lib/invoiceFileName";
+import { buildInvoiceFileName, buildPaymentFileName, buildReceiptFileName } from "@/lib/invoiceFileName";
 import { getServerSupabase } from "@/lib/supabase";
 import type { InvoiceRow } from "@/lib/supabase";
 
@@ -77,9 +77,12 @@ export async function POST(request: NextRequest) {
         const { vendorName, targetMonth: extractedMonth, aiResult } = extractResult;
 
         const isPayment = row.type === "payment";
+        const isReceipt = row.type === "receipt";
         const newFileName = isPayment
           ? buildPaymentFileName(vendorName, extractedMonth)
-          : buildInvoiceFileName(vendorName, extractedMonth);
+          : isReceipt
+            ? buildReceiptFileName(vendorName, extractedMonth)
+            : buildInvoiceFileName(vendorName, extractedMonth);
 
         // Storage のパスはそのまま（tmp/{id}.pdf）。日本語ファイル名は Storage で問題になるため、
         // 表示・ダウンロード用の file_name のみ DB に保存する。

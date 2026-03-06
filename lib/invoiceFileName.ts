@@ -40,16 +40,29 @@ export function buildPaymentFileName(
 }
 
 /**
+ * 領収書のファイル名
+ * 例: "領収書_株式会社〇〇_1月度.pdf"
+ */
+export function buildReceiptFileName(
+  vendorName: string,
+  targetMonth: string,
+  version?: number
+): string {
+  const suffix = version && version > 1 ? `_v${version}` : "";
+  return `領収書_${sanitize(vendorName)}_${formatMonth(targetMonth)}${suffix}.pdf`;
+}
+
+/**
  * ダウンロード用の表示ファイル名（DB の file_name があればそれ、なければ取引先・対象月・種別から生成）
  */
 export function getInvoiceDownloadFileName(params: {
   fileName: string | null;
   vendorName: string;
   targetMonth: string;
-  type: "received" | "payment";
+  type: "received" | "payment" | "receipt";
 }): string {
   if (params.fileName?.trim()) return params.fileName.trim();
-  return params.type === "payment"
-    ? buildPaymentFileName(params.vendorName, params.targetMonth)
-    : buildInvoiceFileName(params.vendorName, params.targetMonth);
+  if (params.type === "payment") return buildPaymentFileName(params.vendorName, params.targetMonth);
+  if (params.type === "receipt") return buildReceiptFileName(params.vendorName, params.targetMonth);
+  return buildInvoiceFileName(params.vendorName, params.targetMonth);
 }

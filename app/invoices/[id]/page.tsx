@@ -79,7 +79,7 @@ export default function InvoiceDetailPage() {
     <AppShell
       header={
         <Header
-          title="請求書管理"
+          title="経理管理"
           targetMonth={invoice.targetMonth}
           onMonthChange={() => {}}
           applications={[]}
@@ -91,7 +91,7 @@ export default function InvoiceDetailPage() {
             href="/dashboard"
             className="text-body text-primary hover:underline"
           >
-            ← 請求書管理
+            ← 経理管理
           </Link>
         </div>
       }
