@@ -18,7 +18,7 @@ export async function GET() {
     );
   }
 
-  const roomId = process.env.CHATWORK_ROOM_ID ?? "24949843";
+  const roomId = process.env.CHATWORK_ROOM_ID ?? "273335165";
   const toIdsRaw = process.env.CHATWORK_TO_IDS ?? "2770625,9991262";
   const toAccountIds = toIdsRaw
     .split(",")
