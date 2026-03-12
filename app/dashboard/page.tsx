@@ -393,14 +393,14 @@ function DashboardContent() {
               </Button>
             )}
           </div>
+        ) : selectedInvoice.status === "returned" || selectedInvoice.status === "approved" ? (
+          <InvoiceApprovalArea invoice={selectedInvoice} onSubmitted={fetchList} />
         ) : (
           <div className="text-body text-muted-foreground">
             <p className="text-caption font-medium text-foreground mb-2">操作説明</p>
             <ul className="list-disc list-inside space-y-1 text-caption">
               {selectedInvoice.status === "ai_checking" || selectedInvoice.status === "draft" ? (
                 <li>取り込み完了後に留意項目の確認と経理提出ができます</li>
-              ) : selectedInvoice.status === "returned" || selectedInvoice.status === "approved" ? (
-                <li>経理レビュー済みです。差し戻し理由等は印刷・共有でPDFを開いて確認できます</li>
               ) : null}
             </ul>
           </div>

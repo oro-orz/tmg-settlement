@@ -40,9 +40,14 @@ export function InvoiceApprovalArea({ invoice, onSubmitted }: InvoiceApprovalAre
   if (isReadOnly) {
     return (
       <div className="p-4 space-y-3 text-body text-muted-foreground">
-        {invoice.reviewerComment && (
-          <p className="pt-2 whitespace-pre-wrap">{invoice.reviewerComment}</p>
+        {invoice.status === "returned" && (
+          <p className="text-caption font-medium text-foreground">差し戻し理由</p>
         )}
+        {invoice.reviewerComment ? (
+          <p className="pt-1 whitespace-pre-wrap rounded-lg bg-muted/50 p-3 text-foreground">{invoice.reviewerComment}</p>
+        ) : invoice.status === "returned" ? (
+          <p className="text-caption">理由は記録されていません</p>
+        ) : null}
       </div>
     );
   }
