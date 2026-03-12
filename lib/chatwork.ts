@@ -50,7 +50,11 @@ export async function sendMessageToRoom(
   }
 }
 
-const DASHBOARD_URL = "https://tmg-settlement.vercel.app/dashboard";
+const DASHBOARD_BASE =
+  typeof process !== "undefined" && process.env.NEXT_PUBLIC_APP_URL
+    ? process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "")
+    : "https://tmg-settlement.vercel.app";
+const DASHBOARD_URL = `${DASHBOARD_BASE}/dashboard`;
 
 /**
  * 請求書経理提出時の通知メッセージ本文を組み立てる。
@@ -69,4 +73,31 @@ export function buildInvoiceSubmittedMessage(params: {
     `提出者: ${submitterName}`,
     `確認: ${DASHBOARD_URL}`,
   ].join("\n");
+}
+
+/**
+ * 請求書差し戻し時の通知メッセージ本文を組み立てる。
+ * shortId でダッシュボード該当請求書へのリンクを付与。
+ */
+export function buildInvoiceReturnedMessage(params: {
+  shortId: string;
+  partnerName: string;
+  targetMonth: string;
+  submitterName: string;
+  reviewerComment: string | null;
+}): string {
+  const { shortId, partnerName, targetMonth, submitterName, reviewerComment } =
+    params;
+  const lines = [
+    "【請求書差し戻し】",
+    `請求書ID: ${shortId}`,
+    `取引先: ${partnerName}`,
+    `対象月: ${targetMonth}`,
+    `担当者: ${submitterName}`,
+  ];
+  if (reviewerComment?.trim()) {
+    lines.push(`差し戻し理由: ${reviewerComment.trim()}`);
+  }
+  lines.push(`確認: ${DASHBOARD_BASE}/dashboard?id=${shortId}`);
+  return lines.join("\n");
 }

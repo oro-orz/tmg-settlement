@@ -7,6 +7,7 @@ import {
 } from "@/lib/invoiceFileName";
 import { getServerSupabase, invoiceRowToInvoice, type InvoiceRow } from "@/lib/supabase";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { sendMessageToRoom, buildInvoiceReturnedMessage } from "@/lib/chatwork";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -73,7 +74,7 @@ export async function POST(
 
     const { data: invoice, error: fetchError } = await supabase
       .from("invoices")
-      .select("id, file_path, vendor_name, client_name, target_month, type")
+      .select("id, file_path, vendor_name, client_name, target_month, type, submitter_name")
       .eq("id", id)
       .single();
 
@@ -150,6 +151,45 @@ export async function POST(
         { success: false, message: "Not found" },
         { status: 404 }
       );
+    }
+
+    // 差し戻し時: 担当者へ Chatwork で差し戻し内容を通知（失敗しても API は成功のまま返す）
+    if (action === "reject") {
+      const r = row as InvoiceRow;
+      const partnerName =
+        r.type === "received"
+          ? ((r.client_name ?? "").trim() || r.vendor_name)
+          : r.vendor_name;
+      try {
+        const roomId = process.env.CHATWORK_ROOM_ID ?? "273335165";
+        let toAccountIds: number[] | undefined;
+        const submitterNameTrimmed = (r.submitter_name ?? "").trim();
+        if (submitterNameTrimmed) {
+          const { data: assignee } = await supabase
+            .from("chatwork_assignees")
+            .select("account_id")
+            .eq("account_name", submitterNameTrimmed)
+            .limit(1)
+            .maybeSingle();
+          if (assignee?.account_id) {
+            const id = parseInt(assignee.account_id, 10);
+            if (!Number.isNaN(id)) toAccountIds = [id];
+          }
+        }
+        await sendMessageToRoom({
+          roomId,
+          body: buildInvoiceReturnedMessage({
+            shortId: r.short_id,
+            partnerName,
+            targetMonth: r.target_month,
+            submitterName: r.submitter_name ?? "",
+            reviewerComment: r.reviewer_comment,
+          }),
+          toAccountIds,
+        });
+      } catch (chatworkErr) {
+        console.error("Chatwork 差し戻し通知 error:", chatworkErr);
+      }
     }
 
     return NextResponse.json({

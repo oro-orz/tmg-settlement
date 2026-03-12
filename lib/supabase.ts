@@ -31,6 +31,7 @@ export function getServerSupabase(): SupabaseClient {
 /** invoices テーブルの行（snake_case） */
 export interface InvoiceRow {
   id: string;
+  short_id: string;
   submitter_name: string;
   vendor_name: string;
   client_name?: string;
@@ -52,6 +53,7 @@ export interface InvoiceRow {
 export function invoiceRowToInvoice(row: InvoiceRow): Invoice {
   return {
     id: row.id,
+    shortId: row.short_id,
     submitterName: row.submitter_name,
     vendorName: row.vendor_name,
     clientName: row.client_name ?? "",

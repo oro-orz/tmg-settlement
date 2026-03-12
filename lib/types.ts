@@ -136,6 +136,8 @@ export type InvoiceType = "received" | "payment" | "receipt";
 
 export interface Invoice {
   id: string;
+  /** 表示用短ID（YYYYMM-001）。Chatwork・ダッシュボードリンク用 */
+  shortId: string;
   submitterName: string;
   vendorName: string;
   /** 請求先名（売掛のときの宛先・お客様名） */

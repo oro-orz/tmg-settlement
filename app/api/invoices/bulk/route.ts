@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase";
+import { generateNextShortId } from "@/lib/invoiceShortId";
 
 /** POST: 一括アップロード（担当者名は FormData で1件共通） */
 export async function POST(request: Request) {
@@ -57,8 +58,10 @@ export async function POST(request: Request) {
         );
       }
 
+      const shortId = await generateNextShortId(supabase);
       const { error: insertError } = await supabase.from("invoices").insert({
         id,
+        short_id: shortId,
         submitter_name: nameStr,
         vendor_name: "",
         client_name: "",

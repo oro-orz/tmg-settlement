@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSupabase, invoiceRowToInvoice, type InvoiceRow } from "@/lib/supabase";
+import { generateNextShortId } from "@/lib/invoiceShortId";
 
 /** GET: 一覧（要ログイン・middleware で 401） */
 export async function GET(request: NextRequest) {
@@ -67,25 +68,44 @@ export async function POST(request: NextRequest) {
 
     const supabase = getServerSupabase();
 
-    const { data: insertRow, error: insertError } = await supabase
-      .from("invoices")
-      .insert({
-        submitter_name: String(submitterName).trim(),
-        vendor_name: String(vendorName).trim(),
-        client_name: "",
-        email: email != null && String(email).trim() !== "" ? String(email).trim() : "",
-        target_month: String(targetMonth).trim().slice(0, 7),
-        file_path: null,
-        status: "draft",
-        type,
-      })
-      .select("id")
-      .single();
+    const maxAttempts = 3;
+    let insertRow: { id: string } | null = null;
+    let insertError: Error | null = null;
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const shortId = await generateNextShortId(supabase);
+      const { data, error } = await supabase
+        .from("invoices")
+        .insert({
+          short_id: shortId,
+          submitter_name: String(submitterName).trim(),
+          vendor_name: String(vendorName).trim(),
+          client_name: "",
+          email: email != null && String(email).trim() !== "" ? String(email).trim() : "",
+          target_month: String(targetMonth).trim().slice(0, 7),
+          file_path: null,
+          status: "draft",
+          type,
+        })
+        .select("id")
+        .single();
+
+      if (!error) {
+        insertRow = data;
+        break;
+      }
+      if (error.code === "23505") {
+        insertError = error;
+        continue;
+      }
+      insertError = error;
+      break;
+    }
 
     if (insertError || !insertRow) {
       console.error("invoices insert error:", insertError);
       return NextResponse.json(
-        { success: false, message: insertError?.message ?? "Failed to create invoice" },
+        { success: false, message: (insertError as Error)?.message ?? "Failed to create invoice" },
         { status: 500 }
       );
     }

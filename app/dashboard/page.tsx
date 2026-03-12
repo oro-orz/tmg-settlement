@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
 import { Header, type InvoiceCounts } from "@/components/layout/Header";
 import { InvoiceLeftPanel } from "@/components/invoice/InvoiceLeftPanel";
@@ -30,7 +31,8 @@ const HUMAN_CHECK_LABELS: Record<keyof HumanCheckedItems, string> = {
   submitterName: "請求者名（誤字・表記ゆれ）",
 };
 
-export default function DashboardPage() {
+function DashboardContent() {
+  const searchParams = useSearchParams();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<string>("");
@@ -55,7 +57,14 @@ export default function DashboardPage() {
       if (data.success && Array.isArray(data.data)) {
         const list = data.data as Invoice[];
         setInvoices(list);
+        const idFromUrl = searchParams.get("id");
         setSelectedInvoice((prev) => {
+          if (idFromUrl && list.length) {
+            const byIdOrShortId = list.find(
+              (i) => i.id === idFromUrl || i.shortId === idFromUrl
+            );
+            if (byIdOrShortId) return byIdOrShortId;
+          }
           if (!prev) return list[0] ?? null;
           const found = list.find((i) => i.id === prev.id);
           return found ?? list[0] ?? null;
@@ -464,5 +473,13 @@ export default function DashboardPage() {
       isLoading={deleteLoading}
     />
     </>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-background"><LoadingSpinner className="h-8 w-8" /></div>}>
+      <DashboardContent />
+    </Suspense>
   );
 }

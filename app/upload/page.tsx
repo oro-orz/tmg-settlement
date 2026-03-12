@@ -8,6 +8,7 @@ import { UPLOAD_TYPE_OPTIONS } from "@/lib/invoiceTypeLabels";
 import { LoadingSpinner } from "@/components/shared/LoadingSpinner";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faFilePdf, faCloudArrowUp } from "@fortawesome/free-solid-svg-icons";
+import { AssigneeCombobox } from "@/components/invoice/AssigneeCombobox";
 
 /** 左パネル（ロゴ・タイトル）＋ 右パネル（コンテンツ）のラッパー */
 function UploadLayout({
@@ -89,12 +90,20 @@ export default function UploadPage() {
   const [documentType, setDocumentType] = useState<InvoiceType>("received");
   const [bulkDocumentType, setBulkDocumentType] = useState<InvoiceType>("received");
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
+  const [assigneeOptions, setAssigneeOptions] = useState<{ accountId: string; accountName: string }[]>([]);
 
   useEffect(() => {
     fetch("/api/auth/me", { credentials: "include" })
       .then((res) => res.ok && res.json())
       .then((data) => setIsLoggedIn(Boolean(data?.user)))
       .catch(() => setIsLoggedIn(false));
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/assignees")
+      .then((res) => res.ok ? res.json() : { success: false, data: [] })
+      .then((json) => setAssigneeOptions(Array.isArray(json?.data) ? json.data : []))
+      .catch(() => setAssigneeOptions([]));
   }, []);
 
   const pdfBlobUrl = useMemo(() => {
@@ -362,11 +371,10 @@ export default function UploadPage() {
                 </div>
                 <div>
                   <label className="block text-caption text-muted-foreground mb-1">Timingood担当者名</label>
-                  <input
-                    type="text"
+                  <AssigneeCombobox
                     value={submitterName}
-                    onChange={(e) => setSubmitterName(e.target.value)}
-                    className="w-full rounded-lg border border-input bg-background px-3 py-2 text-body"
+                    onChange={setSubmitterName}
+                    options={assigneeOptions}
                     placeholder="弊社担当者"
                   />
                 </div>
@@ -570,11 +578,10 @@ export default function UploadPage() {
               </div>
               <div>
                 <label className="block text-caption text-muted-foreground mb-1">Timingood担当者名（必須）</label>
-                <input
-                  type="text"
+                <AssigneeCombobox
                   value={bulkSubmitterName}
-                  onChange={(e) => setBulkSubmitterName(e.target.value)}
-                  className="w-full rounded-lg border border-input bg-background px-3 py-2 text-body"
+                  onChange={setBulkSubmitterName}
+                  options={assigneeOptions}
                   placeholder="弊社担当者"
                 />
               </div>
