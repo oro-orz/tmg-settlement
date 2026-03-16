@@ -1,6 +1,7 @@
 /**
  * セッションの JWT 発行・検証。Cookie に載せて middleware / API で検証する。
  */
+import type { NextRequest } from "next/server";
 import { SignJWT, jwtVerify } from "jose";
 
 const COOKIE_NAME = "settlement_session";
@@ -80,4 +81,15 @@ export function getSessionCookieOptions(maxAgeSeconds: number = DEFAULT_MAX_AGE)
     path: "/",
     maxAge: maxAgeSeconds,
   };
+}
+
+/**
+ * API ルート用: リクエストの Cookie からセッションを取得する。
+ */
+export async function getSessionFromRequest(
+  request: NextRequest
+): Promise<SessionPayload | null> {
+  const token = request.cookies.get(getSessionCookieName())?.value;
+  if (!token) return null;
+  return verifySessionToken(token);
 }

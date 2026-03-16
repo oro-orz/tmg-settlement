@@ -25,6 +25,7 @@ export default function InvoiceDetailPage() {
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [canApproveInvoice, setCanApproveInvoice] = useState(false);
 
   const fetchInvoice = async () => {
     if (!id) return;
@@ -35,7 +36,7 @@ export default function InvoiceDetailPage() {
         setInvoice(data.data);
         setError(null);
       } else {
-        setError(data.message ?? "取得に失敗しました");
+        setError(res.status === 404 ? "この請求書は表示する権限がありません。" : (data.message ?? "取得に失敗しました"));
       }
     } catch {
       setError("通信エラー");
@@ -43,6 +44,13 @@ export default function InvoiceDetailPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetch("/api/auth/me", { credentials: "include" })
+      .then((res) => (res.ok ? res.json() : { user: null }))
+      .then((data) => setCanApproveInvoice(Boolean(data?.user?.can_approve_invoice)))
+      .catch(() => setCanApproveInvoice(false));
+  }, []);
 
   useEffect(() => {
     if (id) fetchInvoice();
@@ -148,7 +156,7 @@ export default function InvoiceDetailPage() {
       }
       right={
         <div className="p-4">
-          <InvoiceApprovalArea invoice={invoice} onSubmitted={fetchInvoice} />
+          <InvoiceApprovalArea invoice={invoice} onSubmitted={fetchInvoice} canApproveInvoice={canApproveInvoice} />
         </div>
       }
     />

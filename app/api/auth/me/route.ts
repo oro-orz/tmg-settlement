@@ -1,10 +1,11 @@
 /**
  * GET /api/auth/me
  * セッションを検証し、ログイン中ならユーザー情報を返す。
+ * can_approve_invoice: 請求書の承認・差し戻しが可能か（役員・経理）
  */
 import { NextRequest, NextResponse } from "next/server";
-import { verifySessionToken } from "@/lib/session";
-import { getSessionCookieName } from "@/lib/session";
+import { verifySessionToken, getSessionCookieName } from "@/lib/session";
+import { canApproveInvoice } from "@/lib/auth-config";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +27,7 @@ export async function GET(request: NextRequest) {
       employee_number: session.employee_number,
       department: session.department,
       role: session.role,
+      can_approve_invoice: canApproveInvoice(session),
     },
   });
 }

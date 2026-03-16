@@ -54,6 +54,14 @@ function DashboardContent() {
   const [submitterNameEdit, setSubmitterNameEdit] = useState("");
   const [submitterNameSaving, setSubmitterNameSaving] = useState(false);
   const [assigneeOptions, setAssigneeOptions] = useState<{ accountId: string; accountName: string }[]>([]);
+  const [canApproveInvoice, setCanApproveInvoice] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/auth/me", { credentials: "include" })
+      .then((res) => (res.ok ? res.json() : { user: null }))
+      .then((data) => setCanApproveInvoice(Boolean(data?.user?.can_approve_invoice)))
+      .catch(() => setCanApproveInvoice(false));
+  }, []);
 
   useEffect(() => {
     if (selectedInvoice) {
@@ -539,7 +547,7 @@ function DashboardContent() {
             </Button>
           </div>
         ) : selectedInvoice.status === "submitted" ? (
-          <InvoiceApprovalArea invoice={selectedInvoice} onSubmitted={fetchList} />
+          <InvoiceApprovalArea invoice={selectedInvoice} onSubmitted={fetchList} canApproveInvoice={canApproveInvoice} />
         ) : selectedInvoice.status === "pending" ? (
           <div className="space-y-4">
             <p className="text-caption text-muted-foreground">
@@ -572,7 +580,7 @@ function DashboardContent() {
             )}
           </div>
         ) : selectedInvoice.status === "returned" || selectedInvoice.status === "approved" ? (
-          <InvoiceApprovalArea invoice={selectedInvoice} onSubmitted={fetchList} />
+          <InvoiceApprovalArea invoice={selectedInvoice} onSubmitted={fetchList} canApproveInvoice={canApproveInvoice} />
         ) : (
           <div className="text-body text-muted-foreground">
             <p className="text-caption font-medium text-foreground mb-2">操作説明</p>

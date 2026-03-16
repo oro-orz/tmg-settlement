@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSupabase, invoiceRowToInvoice, type InvoiceRow } from "@/lib/supabase";
 import { generateNextShortId } from "@/lib/invoiceShortId";
+import { getSessionFromRequest } from "@/lib/session";
+import { canApproveInvoice, isExecutiveSubmitter } from "@/lib/auth-config";
 
-/** GET: 一覧（要ログイン・middleware で 401） */
+/** GET: 一覧（要ログイン・middleware で 401）。役員担当の請求書は役員・経理のみ表示。 */
 export async function GET(request: NextRequest) {
   try {
+    const session = await getSessionFromRequest(request);
+    const canApprove = canApproveInvoice(session);
+
     const supabase = getServerSupabase();
     const { searchParams } = request.nextUrl;
     const status = searchParams.get("status");
@@ -32,7 +37,11 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const list = (rows ?? []).map((r) => invoiceRowToInvoice(r as InvoiceRow));
+    let list = (rows ?? []).map((r) => invoiceRowToInvoice(r as InvoiceRow));
+    // 役員担当の請求書は役員・経理のみ表示
+    if (!canApprove) {
+      list = list.filter((inv) => !isExecutiveSubmitter(inv.submitterName));
+    }
     return NextResponse.json({ success: true, data: list });
   } catch (err) {
     console.error("invoices GET error:", err);

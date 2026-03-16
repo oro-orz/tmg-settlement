@@ -4,12 +4,14 @@ import {
   sendMessageToRoom,
   buildInvoiceSubmittedMessage,
 } from "@/lib/chatwork";
+import { getSessionFromRequest } from "@/lib/session";
+import { canApproveInvoice, isExecutiveSubmitter } from "@/lib/auth-config";
 
 type Params = { params: Promise<{ id: string }> };
 
-/** GET: 1件取得（要ログイン） */
+/** GET: 1件取得（要ログイン）。役員担当の請求書は役員・経理のみ取得可。 */
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: Params
 ) {
   try {
@@ -20,6 +22,9 @@ export async function GET(
         { status: 400 }
       );
     }
+
+    const session = await getSessionFromRequest(request);
+    const canApprove = canApproveInvoice(session);
 
     const supabase = getServerSupabase();
     const { data: row, error } = await supabase
@@ -35,9 +40,17 @@ export async function GET(
       );
     }
 
+    const invoice = invoiceRowToInvoice(row as InvoiceRow);
+    if (isExecutiveSubmitter(invoice.submitterName) && !canApprove) {
+      return NextResponse.json(
+        { success: false, message: "Not found" },
+        { status: 404 }
+      );
+    }
+
     return NextResponse.json({
       success: true,
-      data: invoiceRowToInvoice(row as InvoiceRow),
+      data: invoice,
     });
   } catch (err) {
     console.error("invoices [id] GET error:", err);

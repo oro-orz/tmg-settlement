@@ -12,9 +12,11 @@ import { LoadingSpinner } from "@/components/shared/LoadingSpinner";
 interface InvoiceApprovalAreaProps {
   invoice: Invoice;
   onSubmitted: () => void;
+  /** 承認・差し戻しが可能か（役員・経理のみ true）。未指定時は true（従来どおり表示） */
+  canApproveInvoice?: boolean;
 }
 
-export function InvoiceApprovalArea({ invoice, onSubmitted }: InvoiceApprovalAreaProps) {
+export function InvoiceApprovalArea({ invoice, onSubmitted, canApproveInvoice = true }: InvoiceApprovalAreaProps) {
   const [comment, setComment] = useState("");
   const { submit, isSubmitting } = useInvoiceReviewSubmit();
 
@@ -56,6 +58,14 @@ export function InvoiceApprovalArea({ invoice, onSubmitted }: InvoiceApprovalAre
     return (
       <div className="p-4 text-body text-muted-foreground">
         経理提出済みの申請のみ承認・差し戻しできます。
+      </div>
+    );
+  }
+
+  if (!canApproveInvoice) {
+    return (
+      <div className="p-4 text-body text-muted-foreground">
+        承認・差し戻しは経理・役員のみ可能です。
       </div>
     );
   }

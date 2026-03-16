@@ -8,6 +8,8 @@ import {
 import { getServerSupabase, invoiceRowToInvoice, type InvoiceRow } from "@/lib/supabase";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { sendMessageToRoom, buildInvoiceReturnedMessage } from "@/lib/chatwork";
+import { getSessionFromRequest } from "@/lib/session";
+import { canApproveInvoice } from "@/lib/auth-config";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -67,6 +69,14 @@ export async function POST(
       return NextResponse.json(
         { success: false, message: "action は approve または reject です" },
         { status: 400 }
+      );
+    }
+
+    const session = await getSessionFromRequest(request);
+    if (!canApproveInvoice(session)) {
+      return NextResponse.json(
+        { success: false, message: "請求書の承認・差し戻しは経理・役員のみ可能です。" },
+        { status: 403 }
       );
     }
 
