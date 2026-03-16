@@ -69,6 +69,9 @@ export async function PATCH(
     if (body.aiResult !== undefined) updates.ai_result = body.aiResult;
     if (body.humanChecked !== undefined) updates.human_checked = body.humanChecked;
     if (body.reviewerComment !== undefined) updates.reviewer_comment = body.reviewerComment;
+    if (body.vendorName !== undefined) updates.vendor_name = body.vendorName;
+    if (body.clientName !== undefined) updates.client_name = body.clientName;
+    if (body.submitterName !== undefined) updates.submitter_name = body.submitterName;
 
     if (body.status === "submitted") {
       updates.submitted_at = new Date().toISOString();

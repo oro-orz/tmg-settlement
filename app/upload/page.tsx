@@ -8,7 +8,7 @@ import { UPLOAD_TYPE_OPTIONS } from "@/lib/invoiceTypeLabels";
 import { LoadingSpinner } from "@/components/shared/LoadingSpinner";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faFilePdf, faCloudArrowUp } from "@fortawesome/free-solid-svg-icons";
-import { AssigneeCombobox } from "@/components/invoice/AssigneeCombobox";
+import { AssigneeSelect } from "@/components/invoice/AssigneeSelect";
 
 /** 左パネル（ロゴ・タイトル）＋ 右パネル（コンテンツ）のラッパー */
 function UploadLayout({
@@ -371,11 +371,11 @@ export default function UploadPage() {
                 </div>
                 <div>
                   <label className="block text-caption text-muted-foreground mb-1">Timingood担当者名</label>
-                  <AssigneeCombobox
+                  <AssigneeSelect
                     value={submitterName}
                     onChange={setSubmitterName}
                     options={assigneeOptions}
-                    placeholder="弊社担当者"
+                    placeholder="選択してください"
                   />
                 </div>
               </div>
@@ -578,11 +578,11 @@ export default function UploadPage() {
               </div>
               <div>
                 <label className="block text-caption text-muted-foreground mb-1">Timingood担当者名（必須）</label>
-                <AssigneeCombobox
+                <AssigneeSelect
                   value={bulkSubmitterName}
                   onChange={setBulkSubmitterName}
                   options={assigneeOptions}
-                  placeholder="弊社担当者"
+                  placeholder="選択してください"
                 />
               </div>
 

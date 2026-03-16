@@ -12,6 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/shared/LoadingSpinner";
 import { ConfirmModal } from "@/components/shared/ConfirmModal";
+import { AssigneeSelect } from "@/components/invoice/AssigneeSelect";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faDownload, faTrashCan } from "@fortawesome/free-solid-svg-icons";
 
@@ -46,6 +47,27 @@ function DashboardContent() {
   const [aiCheckRunningId, setAiCheckRunningId] = useState<string | null>(null);
   const [aiCheckBulkRunning, setAiCheckBulkRunning] = useState(false);
   const [notifyAccounting, setNotifyAccounting] = useState(false);
+  const [editingPartner, setEditingPartner] = useState(false);
+  const [partnerNameEdit, setPartnerNameEdit] = useState("");
+  const [partnerNameSaving, setPartnerNameSaving] = useState(false);
+  const [editingSubmitter, setEditingSubmitter] = useState(false);
+  const [submitterNameEdit, setSubmitterNameEdit] = useState("");
+  const [submitterNameSaving, setSubmitterNameSaving] = useState(false);
+  const [assigneeOptions, setAssigneeOptions] = useState<{ accountId: string; accountName: string }[]>([]);
+
+  useEffect(() => {
+    if (selectedInvoice) {
+      setEditingPartner(false);
+      setEditingSubmitter(false);
+    }
+  }, [selectedInvoice?.id]);
+
+  useEffect(() => {
+    fetch("/api/assignees")
+      .then((res) => (res.ok ? res.json() : { success: false, data: [] }))
+      .then((json) => setAssigneeOptions(Array.isArray(json?.data) ? json.data : []))
+      .catch(() => setAssigneeOptions([]));
+  }, []);
 
   const fetchList = async () => {
     setLoading(true);
@@ -289,11 +311,167 @@ function DashboardContent() {
     </div>
   );
 
+  const partnerDisplayValue = selectedInvoice
+    ? getDisplayPartnerName(selectedInvoice, selectedInvoice.status === "pending" ? "—（AIチェック後に表示）" : "—")
+    : "";
+
+  const handleStartEditPartner = () => {
+    if (selectedInvoice) {
+      setPartnerNameEdit(partnerDisplayValue);
+      setEditingPartner(true);
+    }
+  };
+
+  const handleSavePartnerName = async () => {
+    if (!selectedInvoice || partnerNameSaving) return;
+    const trimmed = partnerNameEdit.trim();
+    const current =
+      selectedInvoice.type === "received"
+        ? (selectedInvoice.clientName ?? selectedInvoice.vendorName ?? "").trim()
+        : (selectedInvoice.vendorName ?? "").trim();
+    if (trimmed === current) {
+      setEditingPartner(false);
+      return;
+    }
+    setPartnerNameSaving(true);
+    try {
+      const body =
+        selectedInvoice.type === "received"
+          ? { clientName: trimmed || "" }
+          : { vendorName: trimmed || "" };
+      const res = await fetch(`/api/invoices/${selectedInvoice.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (data.success) {
+        await fetchList();
+        setEditingPartner(false);
+      } else {
+        alert(data.message ?? "保存に失敗しました");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("保存に失敗しました");
+    } finally {
+      setPartnerNameSaving(false);
+    }
+  };
+
+  const handleStartEditSubmitter = () => {
+    if (selectedInvoice) {
+      setSubmitterNameEdit(selectedInvoice.submitterName ?? "");
+      setEditingSubmitter(true);
+    }
+  };
+
+  const handleSaveSubmitterName = async () => {
+    if (!selectedInvoice || submitterNameSaving) return;
+    const trimmed = submitterNameEdit.trim();
+    const current = (selectedInvoice.submitterName ?? "").trim();
+    if (trimmed === current) {
+      setEditingSubmitter(false);
+      return;
+    }
+    setSubmitterNameSaving(true);
+    try {
+      const res = await fetch(`/api/invoices/${selectedInvoice.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ submitterName: trimmed || "" }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        await fetchList();
+        setEditingSubmitter(false);
+      } else {
+        alert(data.message ?? "保存に失敗しました");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("保存に失敗しました");
+    } finally {
+      setSubmitterNameSaving(false);
+    }
+  };
+
   const rightDetailBlock = selectedInvoice ? (
     <div className="p-4 space-y-4 border-b border-border">
       <div className="space-y-2">
-        <p><span className="text-caption text-muted-foreground">{getPartnerLabel(selectedInvoice.type)}</span><br />{getDisplayPartnerName(selectedInvoice, selectedInvoice.status === "pending" ? "—（AIチェック後に表示）" : "—")}</p>
-        <p><span className="text-caption text-muted-foreground">Timingood担当者</span><br />{selectedInvoice.submitterName}</p>
+        {editingPartner ? (
+          <div>
+            <span className="text-caption text-muted-foreground">{getPartnerLabel(selectedInvoice.type)}</span>
+            <div className="flex gap-2 mt-1">
+              <input
+                type="text"
+                value={partnerNameEdit}
+                onChange={(e) => setPartnerNameEdit(e.target.value)}
+                className="flex-1 rounded-lg border border-input bg-background px-3 py-2 text-body"
+                placeholder={getPartnerLabel(selectedInvoice.type)}
+                autoFocus
+              />
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                onClick={handleSavePartnerName}
+                disabled={partnerNameSaving}
+              >
+                {partnerNameSaving ? <LoadingSpinner className="h-4 w-4" /> : "反映"}
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={handleStartEditPartner}
+            onKeyDown={(e) => e.key === "Enter" && handleStartEditPartner()}
+            className="rounded-lg px-3 py-2 -mx-3 -my-2 cursor-pointer hover:bg-muted/60 focus:outline-none focus:bg-muted/60 transition-colors"
+          >
+            <span className="text-caption text-muted-foreground">{getPartnerLabel(selectedInvoice.type)}</span>
+            <br />
+            <span className="text-foreground">{partnerDisplayValue}</span>
+          </div>
+        )}
+        {editingSubmitter ? (
+          <div>
+            <span className="text-caption text-muted-foreground">Timingood担当者</span>
+            <div className="flex gap-2 mt-1">
+              <div className="flex-1 min-w-0">
+                <AssigneeSelect
+                  value={submitterNameEdit}
+                  onChange={setSubmitterNameEdit}
+                  options={assigneeOptions}
+                  currentValueIfMissing={selectedInvoice.submitterName ?? ""}
+                  placeholder="選択してください"
+                />
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                onClick={handleSaveSubmitterName}
+                disabled={submitterNameSaving}
+              >
+                {submitterNameSaving ? <LoadingSpinner className="h-4 w-4" /> : "反映"}
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={handleStartEditSubmitter}
+            onKeyDown={(e) => e.key === "Enter" && handleStartEditSubmitter()}
+            className="rounded-lg px-3 py-2 -mx-3 -my-2 cursor-pointer hover:bg-muted/60 focus:outline-none focus:bg-muted/60 transition-colors"
+          >
+            <span className="text-caption text-muted-foreground">Timingood担当者</span>
+            <br />
+            <span className="text-foreground">{selectedInvoice.submitterName || "—"}</span>
+          </div>
+        )}
         {selectedInvoice.email ? (
           <p><span className="text-caption text-muted-foreground">メール</span><br />{selectedInvoice.email}</p>
         ) : null}
