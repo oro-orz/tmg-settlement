@@ -91,6 +91,8 @@ export default function UploadPage() {
   const [bulkDocumentType, setBulkDocumentType] = useState<InvoiceType>("received");
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
   const [assigneeOptions, setAssigneeOptions] = useState<{ accountId: string; accountName: string }[]>([]);
+  /** 未ログイン・セッション切れでAPIが401を返したときのメッセージ（担当者一覧など） */
+  const [authError, setAuthError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/auth/me", { credentials: "include" })
@@ -100,10 +102,25 @@ export default function UploadPage() {
   }, []);
 
   useEffect(() => {
-    fetch("/api/assignees")
-      .then((res) => res.ok ? res.json() : { success: false, data: [] })
+    setAuthError(null);
+    fetch("/api/assignees", { credentials: "include" })
+      .then(async (res) => {
+        if (res.status === 401) {
+          setAuthError("ログインが必要です。担当者を選択するにはログインしてください。");
+          return { success: false, data: [] as { accountId: string; accountName: string }[] };
+        }
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setAuthError("担当者一覧を取得できませんでした。しばらく経ってからお試しください。");
+          return { success: false, data: [] as { accountId: string; accountName: string }[] };
+        }
+        return json;
+      })
       .then((json) => setAssigneeOptions(Array.isArray(json?.data) ? json.data : []))
-      .catch(() => setAssigneeOptions([]));
+      .catch(() => {
+        setAssigneeOptions([]);
+        setAuthError("担当者一覧を取得できませんでした。しばらく経ってからお試しください。");
+      });
   }, []);
 
   const pdfBlobUrl = useMemo(() => {
@@ -150,6 +167,7 @@ export default function UploadPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ pdfBase64: base64 }),
+        credentials: "include",
       });
       const data = await res.json();
       if (!data.success) {
@@ -187,6 +205,7 @@ export default function UploadPage() {
           pdfBase64: preview.pdfBase64,
           type: documentType,
         }),
+        credentials: "include",
       });
       const data = await res.json();
       if (!data.success) {
@@ -248,7 +267,7 @@ export default function UploadPage() {
       formData.set("submitterName", bulkSubmitterName.trim());
       formData.set("type", bulkDocumentType);
       bulkFiles.forEach((f) => formData.append("files", f));
-      const res = await fetch("/api/invoices/bulk", { method: "POST", body: formData });
+      const res = await fetch("/api/invoices/bulk", { method: "POST", body: formData, credentials: "include" });
       const data = await res.json();
       if (!data.success) {
         throw new Error(data.message ?? "一括提出に失敗しました");
@@ -269,6 +288,8 @@ export default function UploadPage() {
     setBulkDocumentType("received");
     setError(null);
   };
+
+  const isLoginRequiredError = (msg: string | null) => msg != null && msg.includes("ログイン");
 
   if (invoice) {
     return (
@@ -376,6 +397,7 @@ export default function UploadPage() {
                     onChange={setSubmitterName}
                     options={assigneeOptions}
                     placeholder="選択してください"
+                    disabled={false}
                   />
                 </div>
               </div>
@@ -412,7 +434,12 @@ export default function UploadPage() {
 
               {error && (
                 <div className="rounded-lg bg-destructive/10 text-destructive px-4 py-2 text-body">
-                  {error}
+                  <p>{error}</p>
+                  {isLoginRequiredError(error) && (
+                    <Link href="/login" className="mt-2 inline-block font-medium text-primary underline hover:no-underline">
+                      ログイン画面へ
+                    </Link>
+                  )}
                 </div>
               )}
 
@@ -451,6 +478,19 @@ export default function UploadPage() {
   return (
     <UploadLayout title="請求書・領収書を申請する">
       <div className="w-full max-w-md rounded-2xl border border-border bg-card p-8 shadow-lg shadow-black/5">
+        {authError && (
+          <div className="mb-4 rounded-lg border border-amber-500/50 bg-amber-500/10 px-4 py-3 text-body text-foreground">
+            <p className="font-medium">{authError}</p>
+            {authError.includes("ログイン") && (
+              <Link
+                href="/login"
+                className="mt-2 inline-block text-body font-medium text-primary underline hover:no-underline"
+              >
+                ログイン画面へ
+              </Link>
+            )}
+          </div>
+        )}
         <div className="flex rounded-lg border border-border bg-muted/30 p-0.5 mb-6">
           <button
             type="button"
@@ -536,7 +576,12 @@ export default function UploadPage() {
 
               {error && (
                 <div className="rounded-lg bg-destructive/10 text-destructive px-4 py-2 text-body text-sm">
-                  {error}
+                  <p>{error}</p>
+                  {isLoginRequiredError(error) && (
+                    <Link href="/login" className="mt-2 inline-block font-medium text-primary underline hover:no-underline">
+                      ログイン画面へ
+                    </Link>
+                  )}
                 </div>
               )}
 
@@ -583,6 +628,7 @@ export default function UploadPage() {
                   onChange={setBulkSubmitterName}
                   options={assigneeOptions}
                   placeholder="選択してください"
+                  disabled={false}
                 />
               </div>
 
@@ -637,7 +683,12 @@ export default function UploadPage() {
 
               {error && (
                 <div className="rounded-lg bg-destructive/10 text-destructive px-4 py-2 text-body text-sm">
-                  {error}
+                  <p>{error}</p>
+                  {isLoginRequiredError(error) && (
+                    <Link href="/login" className="mt-2 inline-block font-medium text-primary underline hover:no-underline">
+                      ログイン画面へ
+                    </Link>
+                  )}
                 </div>
               )}
 

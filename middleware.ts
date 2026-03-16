@@ -1,6 +1,7 @@
 /**
  * ルート保護: /login および静的リソース以外でセッションを検証し、未認証なら /login へリダイレクトする。
- * 請求書アップロード: /upload と POST /api/invoices は認証不要だが、同一IP で 5分あたり 3件までに制限する。
+ * 請求書アップロード: 現在はログイン必須（将来的に外部共有時は /upload を認証不要に戻す想定）。
+ * レート制限: 提出API は同一IP で 5分あたり 3件まで。
  */
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
@@ -36,15 +37,14 @@ function isPublicPath(pathname: string): boolean {
   if (pathname.startsWith("/_next") || pathname.startsWith("/favicon")) return true;
   if (pathname.startsWith("/images")) return true;
   if (pathname.startsWith("/api/auth")) return true;
-  if (pathname === "/upload" || pathname.startsWith("/upload/")) return true;
+  // /upload は現在ログイン必須（将来的に認証不要で外部共有する場合はここに戻す）
   if (/^\/status\/[^/]+$/.test(pathname)) return true;
   return false;
 }
 
 function isPublicApiPath(pathname: string, method: string): boolean {
   if (pathname.startsWith("/api/invoices/status/")) return true;
-  if (pathname === "/api/invoices" && method === "POST") return true;
-  if (pathname === "/api/invoices/bulk" && method === "POST") return true;
+  // 請求書の提出API は現在ログイン必須（将来的に認証不要で外部共有する場合はここに戻す）
   // 開発時のみ: Chatwork テスト通知（認証なしで curl 可能）
   if (
     process.env.NODE_ENV === "development" &&
@@ -90,7 +90,7 @@ export async function middleware(request: NextRequest) {
   if (!token) {
     if (isApiRoute) {
       return NextResponse.json(
-        { success: false, message: "Unauthorized" },
+        { success: false, message: "ログインが必要です。この操作を行うにはログインしてください。" },
         { status: 401 }
       );
     }
@@ -103,7 +103,7 @@ export async function middleware(request: NextRequest) {
   if (!session) {
     if (isApiRoute) {
       return NextResponse.json(
-        { success: false, message: "Unauthorized" },
+        { success: false, message: "ログインが必要です。セッションの有効期限が切れた可能性があります。再度ログインしてください。" },
         { status: 401 }
       );
     }

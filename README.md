@@ -1,161 +1,195 @@
-# 業務ツール立替申請 - AI自動チェック統合システム
+# 業務ツール立替申請 - 統合システム
 
-経理担当者と役員による二段階承認フローを実装した立替申請管理システムです。Claude APIによる領収書の自動チェック機能を搭載しています。
+**請求書管理**・**AIツール申請（立替）**・**有給申請**の3機能をひとつの Next.js アプリで提供する業務ツールです。Firebase 認証・GAS 連携・Supabase・AI チェックを組み合わせて運用します。
 
-## 機能
+---
 
-### 実装済み機能
+## システム構成
 
-- **ログイン**: Firebase（Google）認証。所属課・役職・メール許可リストでアクセス制御。未登録／権限なし時はエラーメッセージを表示。
-- **左右分割UI**: 申請一覧（左）と詳細（右）のシンプルな画面構成
-- **AI自動チェック**: Claude APIによる領収書の自動読み取り・整合性チェック
-- **二段階承認フロー**:
-  - 経理チェック: 基本的な承認・差し戻し・役員へ回す
-  - 役員確認: 経理が迷った案件のみ
-- **月別表示**: 対象月の申請を表示（アーカイブは `/archive`）
-- **CSVエクスポート**: 会計ソフト連携用のデータ出力
-- **領収書表示**: Google Driveの画像はAPI経由で表示
+| 機能 | 説明 | 主な画面・データ |
+|------|------|------------------|
+| **請求書管理** | 請求書・領収書のアップロード〜経理承認まで | アップロード（認証不要）、経理管理、アーカイブ／Supabase + Storage、Gemini |
+| **ツール申請（立替）** | 業務ツール利用の立替申請と経理・役員承認 | 申請一覧、AIチェック進捗／GAS + スプシ、OpenAI・Gemini |
+| **有給申請** | 休暇申請の承認と有給残日数の確認 | 休暇申請承認、有給残日数／GAS（休暇用） |
 
-### 主な特徴
+---
 
-1. **経理の負担軽減**: AIが自動で領収書を読み取り、不一致を検出
-2. **シンプルなフロー**: 基本は経理のみで完結、必要な時だけ役員へ
-3. **月次管理**: 月ごとに申請を表示、アーカイブで過去月を参照可能
+## 1. 請求書管理
+
+請求書・領収書を PDF で登録し、AI チェックと社内確認を経て経理が承認または差し戻しするフローです。
+
+### 主な画面
+
+- **`/upload`** … アップロード（認証不要）  
+  個別 or 一括で PDF を登録。種別（売上／支払い／領収書）・担当者・対象月を入力。担当者は登録済みリストから選択。
+- **`/dashboard`** … 経理管理（ログイン必須）  
+  一覧で請求書を選択し、PDF 確認・AI 結果確認・留意項目チェックのうえ「経理へ提出」。経理提出後は承認 or 差し戻し（理由入力）。請求元・担当者名は右パネルで手動修正可能。
+- **`/archive`** … 承認済みの請求書一覧（月別）。
+- **`/status/[id]`** … 進捗確認（認証不要）  
+  提出時に案内する URL で、取引先がステータス・差し戻し理由を確認。
+
+### 流れ
+
+1. アップロード（担当者 or 取引先） → PDF 登録
+2. AI チェック（抽出・必須項目チェック）※一括はダッシュボードから実行可
+3. 社内担当者が留意5項目を確認 → 経理へ提出
+4. 経理が承認 or 差し戻し（差し戻し時は Chatwork で担当者に通知）
+5. 承認分は正式格納。差し戻し分は理由を確認のうえ再提出
+
+### 技術・データ
+
+- **データ**: Supabase（`invoices` テーブル + Storage）
+- **AI**: Google Gemini（請求書 PDF の読み取り・チェック）
+- **通知**: Chatwork（経理提出時・差し戻し時）
+- **認証**: アップロード・進捗確認は認証不要。一覧・承認はログイン必須。アップロードは同一 IP で 5 分あたり 3 件までレート制限。
+
+---
+
+## 2. AIツール申請（立替申請）
+
+業務ツール利用に伴う立替申請の一覧表示と、経理・役員の二段階承認を行います。申請データは GAS + スプレッドシートで管理します。
+
+### 主な画面
+
+- **`/applications`** … 申請一覧（対象月）  
+  左に一覧、右に詳細・領収書表示。AI 自動チェック結果を表示し、経理承認・差し戻し・役員へ回すを実行。
+- **`/ai-check-jobs`** … AI チェックの一括実行・進捗確認
+
+### 流れ
+
+1. 申請は GAS／スプシ側で登録（本アプリは承認・AI チェック用）
+2. 経理が一覧から選択し、領収書と AI 判定を確認
+3. 経理承認 or 差し戻し or 役員へ回す
+4. 役員確認待ちの申請は役員が最終承認 or 差し戻し
+- **`/archive`**（立替用） … 過去月の申請アーカイブ表示
+
+### 技術・データ
+
+- **データ**: Google Apps Script（GAS）+ スプレッドシート + Google Drive（領収書画像）
+- **AI**: OpenAI / Gemini（領収書の読み取り・整合性チェック）
+- **承認履歴・コメント**: Supabase（`approval_history`）。スプシには書き戻しません。
+
+---
+
+## 3. 有給申請
+
+休暇申請の承認と有給残日数の確認を行います。申請データは休暇用 GAS で管理します。
+
+### 主な画面
+
+- **`/leave-approval`** … 休暇申請の承認  
+  対象月の申請一覧を表示し、承認・差し戻しなどの操作を実行。
+- **`/paid-leave`** … 有給残日数一覧  
+  GAS から取得した有給残日数データを表示。
+- **`/leave`** … 休暇申請（申請フォーム未実装・プレースホルダーのみ）
+
+### 技術・データ
+
+- **データ**: 休暇申請用 GAS（`NEXT_PUBLIC_LEAVE_GAS_API_URL`）
+
+---
 
 ## セットアップ
 
-### 1. 環境変数の設定
+### 1. 環境変数
 
 ```bash
 cp .env.local.example .env.local
 ```
 
-`.env.local` を編集：
+`.env.local` で以下を設定します。
 
-```env
-NEXT_PUBLIC_GAS_API_URL=https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec
-OPENAI_API_KEY=sk-proj-xxxxx
-NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-```
+| 用途 | 変数例 |
+|------|--------|
+| 立替申請一覧（GAS） | `NEXT_PUBLIC_GAS_API_URL` |
+| 休暇申請（GAS） | `NEXT_PUBLIC_LEAVE_GAS_API_URL` |
+| AI（領収書OCR・画像） | `OPENAI_API_KEY` |
+| AI（請求書PDF・領収書） | `GOOGLE_GEMINI_API_KEY` |
+| Supabase | `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` |
+| Firebase 認証 | `FIREBASE_SERVICE_ACCOUNT_KEY_PATH` または `FIREBASE_SERVICE_ACCOUNT_KEY`、`AUTH_SECRET` |
+| ログイン許可 | `ALLOWED_LOGIN_EMAILS` / `ALLOWED_DEPARTMENTS` / `ALLOWED_ROLE` のいずれか |
+| 請求書通知 | `CHATWORK_API_TOKEN`, `CHATWORK_ROOM_ID`（任意）、`NEXT_PUBLIC_APP_URL`（任意） |
 
-#### Supabase の準備（承認履歴・コメント用）
+詳細は `.env.local.example` を参照してください。
 
-1. [Supabase](https://supabase.com) でプロジェクトを作成
-2. ダッシュボードの **SQL Editor** で `supabase/migrations/001_approval_history.sql` の内容を実行し、`approval_history` テーブルを作成
-3. **Settings → API** で **Project URL** を `NEXT_PUBLIC_SUPABASE_URL`、**service_role** キーを `SUPABASE_SERVICE_ROLE_KEY` に設定
+### 2. Supabase
 
-※ 承認結果はスプシには書き戻しません。経理・役員の意思疎通用にのみ Supabase に保存します。
+- プロジェクト作成後、**SQL Editor** で `supabase/migrations/` 内のマイグレーションを順に実行（請求書用 `invoices`・Storage、立替用 `approval_history`、その他）。
+- **Settings → API** で Project URL と `service_role` キーを取得し、上記の環境変数に設定。
 
-#### Firebase 認証の設定（ログイン）
+### 3. Firebase 認証
 
-- **クライアント**: `NEXT_PUBLIC_FIREBASE_PROJECT_ID`, `NEXT_PUBLIC_FIREBASE_API_KEY`, `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`, `NEXT_PUBLIC_FIREBASE_APP_ID`（Firebase Console のプロジェクト設定から取得）
-- **サーバー**: `FIREBASE_SERVICE_ACCOUNT_KEY`（Service Account の JSON を文字列で設定）
-- **セッション**: `AUTH_SECRET`（32文字以上のランダム文字列。JWT 署名に使用）
-- **BigQuery**: `BIGQUERY_PROJECT_ID`, `BIGQUERY_DATASET_ID`, `BIGQUERY_LOCATION`, `GOOGLE_SERVICE_ACCOUNT_KEY`（社員マスタ参照）
-- **ログイン許可条件**: `ALLOWED_DEPARTMENTS`（例: `システム課,経理課`）、`ALLOWED_ROLE`（例: `役員`）、`ALLOWED_LOGIN_EMAILS`（カンマ区切りのメール）。いずれかを満たすユーザーのみログイン可能。未登録の Gmail や条件を満たさない場合はログイン拒否となり、画面にメッセージを表示する。
+- Firebase Console でプロジェクト・認証（Google）を設定。
+- クライアント用: `NEXT_PUBLIC_FIREBASE_*` を設定。
+- サーバー用: Service Account の JSON を `firebase-service-account.json` に保存するか、`FIREBASE_SERVICE_ACCOUNT_KEY` に 1 行で設定。
+- セッション署名用に `AUTH_SECRET`（32 文字以上）を設定。
 
-#### GAS URL について（申請一覧の表示）
+### 4. GAS（立替申請）
 
-`NEXT_PUBLIC_GAS_API_URL` には **v1（API 用）** のコードをデプロイした URL を設定してください。申請一覧・詳細は JSON で返す API が必要です。HTML を表示するデプロイ（v2 の画面用など）の URL を設定すると「GAS が JSON ではなく HTML を返しました」というエラーになります。同じスプレッドシートに v1 のコードを入れた GAS を「ウェブアプリ」としてデプロイし、その URL をここに設定してください。
+- 申請管理用スプレッドシートに、AI チェック結果・経理チェック・役員承認用の列を追加。
+- `docs/ファイル群2.md` 等を参照し、GAS を Web アプリとしてデプロイ。**JSON を返す API** 用の URL を `NEXT_PUBLIC_GAS_API_URL` に設定。
 
-### 2. 依存関係のインストール
+### 5. 起動
 
 ```bash
 npm install
-```
-
-### 3. 開発サーバーの起動
-
-```bash
 npm run dev
 ```
 
-http://localhost:3000 にアクセス（未ログイン時は `/login` にリダイレクトされます）
+http://localhost:3000 にアクセス（未ログイン時は `/login` にリダイレクト。`/upload` は認証不要）。
 
-### 4. GAS側の設定
-
-#### スプレッドシートの列構成
-
-申請管理シートに以下の列を追加：
-
-| 列 | 項目名 | 説明 |
-|----|--------|------|
-| Q | AI自動チェック結果 | JSON形式 |
-| R | AI検出フラグ | OK/WARNING/ERROR |
-| S | 経理チェック担当者 | 氏名 |
-| T | 経理チェック日時 | タイムスタンプ |
-| U | 経理コメント | テキスト |
-| V | 役員承認者 | 氏名 |
-| W | 役員承認日時 | タイムスタンプ |
-| X | 役員コメント | テキスト |
-
-また、P列を「経理確認」から「チェックステータス」に変更し、値を以下に統一：
-
-- 未確認
-- 経理承認済
-- 差し戻し
-- 役員確認待ち
-- 最終承認済
-
-#### GAS code.gsの更新
-
-`docs/ファイル群2.md` の「17. GAS側の追加コード」を既存の `code.gs` にマージし、Web Appとして再デプロイ。
-
-## 使い方
-
-### 経理担当者
-
-1. 左パネルで未確認の申請を選択
-2. 右パネルで領収書を確認
-3. AI判定結果を参考にチェック
-4. 問題なければ「経理承認」
-5. 迷ったら「役員へ回す」
-
-### 役員
-
-1. 「役員確認待ち」の申請を選択
-2. 経理のコメントを確認
-3. 最終判断を下す
+---
 
 ## 技術スタック
 
-- **フロントエンド**: Next.js 15 (App Router)
-- **UI**: shadcn/ui + Tailwind CSS
-- **AI**: OpenAI API（領収書OCR・gpt-4o-mini）
-- **バックエンド**: Google Apps Script
-- **データ**: Google Sheets / Google Drive（申請データは読み取り専用）
-- **承認履歴・コメント**: Supabase（スプシには書き戻さない）
+- **フロント**: Next.js 15 (App Router)、Tailwind CSS、shadcn/ui
+- **認証**: Firebase Auth（Google）
+- **請求書**: Supabase（DB + Storage）、Google Gemini
+- **立替申請**: GAS、スプレッドシート、Drive／OpenAI・Gemini
+- **有給**: GAS（休暇用）
+- **共通**: Supabase（承認履歴等）、Chatwork（請求書の通知）
 
-## ディレクトリ構造
+---
+
+## ディレクトリ構造（抜粋）
 
 ```
-├── app/
-│   ├── layout.tsx
-│   ├── page.tsx          # メイン承認画面
-│   ├── globals.css
-│   ├── archive/page.tsx  # 過去月アーカイブ
-│   └── api/
-│       ├── ai-check/       # AI自動チェック
-│       ├── approval-history/ # 承認履歴の取得・追加（Supabase）
-│       └── image/          # 領収書画像プロキシ
-├── components/
-│   ├── ui/               # shadcn/ui
-│   ├── layout/           # Header, TwoColumnLayout
-│   ├── approval/         # 承認画面用
-│   └── shared/           # 共通コンポーネント
-├── lib/
-│   ├── types.ts
-│   ├── constants.ts
-│   ├── utils.ts
-│   ├── formatters.ts
-│   ├── gasApi.ts
-│   ├── supabase.ts        # Supabase サーバー用クライアント
-│   └── aiChecker.ts
-└── hooks/
-    ├── useApplications.ts
-    └── useCheckSubmit.ts
+app/
+├── page.tsx                 # ルート → /dashboard へリダイレクト
+├── login/
+├── upload/                  # 請求書アップロード（認証不要）
+├── dashboard/                # 請求書 経理管理
+├── archive/                  # 請求書 承認済みアーカイブ
+├── invoices/[id]/            # 請求書 詳細・経理レビュー
+├── status/[id]/              # 請求書 進捗確認（認証不要）
+├── applications/             # 立替申請 一覧・承認
+├── ai-check-jobs/            # 立替 AIチェック進捗
+├── leave/                    # 休暇申請（申請フォーム未実装・プレースホルダーのみ）
+├── leave-approval/           # 休暇申請 承認
+├── paid-leave/               # 有給残日数
+└── api/
+    ├── invoices/             # 請求書 CRUD・AI・承認・status
+    ├── assignees/            # 担当者一覧（請求書用）
+    ├── applications/        # 立替申請（GAS ラップ）
+    ├── ai-check/             # 立替 領収書 AI チェック
+    ├── approval-history/     # 立替 承認履歴（Supabase）
+    ├── leave-applications/   # 休暇申請一覧
+    ├── leave-approval/       # 休暇承認
+    └── paid-leave-list/     # 有給残日数
+components/
+├── invoice/                 # 請求書用（一覧・承認・担当者選択など）
+├── approval/                # 立替・休暇 承認用
+└── layout/                  # AppShell, Header, Sidebar
+lib/
+├── invoiceAiChecker.ts      # 請求書 PDF AI
+├── aiChecker.ts             # 領収書 AI
+├── supabase.ts
+├── gasApi.ts
+└── chatwork.ts              # 請求書 Chatwork 通知
+supabase/migrations/         # 請求書・担当者・承認履歴等
 ```
+
+---
 
 ## ライセンス
 
