@@ -1,12 +1,4 @@
 /**
- * "2026-01" → "1月度"
- */
-function formatMonth(targetMonth: string): string {
-  const month = parseInt(targetMonth.split("-")[1], 10);
-  return `${month}月度`;
-}
-
-/**
  * Storageパス・オブジェクトキーに使えない文字を除去（Supabase Storage の Invalid key を防ぐ）
  * スペース・スラッシュ・バックスラッシュ・制御文字などをアンダースコアに置換
  */
@@ -18,8 +10,19 @@ export function sanitize(name: string): string {
 }
 
 /**
- * 受取請求書のファイル名
- * 例: "株式会社〇〇_1月度請求書.pdf"
+ * ストレージキー用: 英数字・ハイフン・アンダースコアのみにし、Supabase の Invalid key を防ぐ（フォルダ・ファイル名の両方で使用）
+ */
+export function storageSafeSlug(name: string): string {
+  const s = sanitize(name)
+    .replace(/[^A-Za-z0-9_-]/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  return s || "vendor";
+}
+
+/**
+ * 受取請求書のストレージ用ファイル名（ASCII のみ。Supabase Invalid key 対策）
+ * 例: "invoice_Hoshino_Design_2026-02.pdf"
  */
 export function buildInvoiceFileName(
   vendorName: string,
@@ -27,12 +30,12 @@ export function buildInvoiceFileName(
   version?: number
 ): string {
   const suffix = version && version > 1 ? `_v${version}` : "";
-  return `${sanitize(vendorName)}_${formatMonth(targetMonth)}請求書${suffix}.pdf`;
+  return `invoice_${storageSafeSlug(vendorName)}_${targetMonth}${suffix}.pdf`;
 }
 
 /**
- * 支払い請求書のファイル名
- * 例: "支払い_株式会社〇〇_1月度請求書.pdf"
+ * 支払い請求書のストレージ用ファイル名（ASCII のみ。Supabase Invalid key 対策）
+ * 例: "payment_Hoshino_Design_2026-02.pdf"
  */
 export function buildPaymentFileName(
   vendorName: string,
@@ -40,12 +43,12 @@ export function buildPaymentFileName(
   version?: number
 ): string {
   const suffix = version && version > 1 ? `_v${version}` : "";
-  return `支払い_${sanitize(vendorName)}_${formatMonth(targetMonth)}請求書${suffix}.pdf`;
+  return `payment_${storageSafeSlug(vendorName)}_${targetMonth}${suffix}.pdf`;
 }
 
 /**
- * 領収書のファイル名
- * 例: "領収書_株式会社〇〇_1月度.pdf"
+ * 領収書のストレージ用ファイル名（ASCII のみ。Supabase Invalid key 対策）
+ * 例: "receipt_Hoshino_Design_2026-02.pdf"
  */
 export function buildReceiptFileName(
   vendorName: string,
@@ -53,7 +56,7 @@ export function buildReceiptFileName(
   version?: number
 ): string {
   const suffix = version && version > 1 ? `_v${version}` : "";
-  return `領収書_${sanitize(vendorName)}_${formatMonth(targetMonth)}${suffix}.pdf`;
+  return `receipt_${storageSafeSlug(vendorName)}_${targetMonth}${suffix}.pdf`;
 }
 
 /**

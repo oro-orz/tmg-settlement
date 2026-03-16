@@ -88,12 +88,18 @@ export function getExecutiveSubmitterNames(): string[] {
   );
 }
 
-/** 指定の担当者名が役員扱いか（役員担当の請求書は役員・経理のみ表示） */
+/** 比較用: 空白を正規化（前後trim・連続スペースを1つに） */
+function normalizeName(s: string): string {
+  return s.trim().replace(/\s+/g, " ");
+}
+
+/** 指定の担当者名が役員扱いか（役員担当の請求書は役員・経理のみ表示）。
+ * 注意: 非表示にするには INVOICE_EXECUTIVE_SUBMITTER_NAMES に役員の担当者名をカンマ区切りで設定すること。未設定なら誰でも表示される。 */
 export function isExecutiveSubmitter(submitterName: string | null | undefined): boolean {
   if (!submitterName || typeof submitterName !== "string") return false;
-  const name = submitterName.trim();
+  const name = normalizeName(submitterName);
   if (!name) return false;
   const list = getExecutiveSubmitterNames();
   if (list.length === 0) return false;
-  return list.some((n) => n === name);
+  return list.some((n) => normalizeName(n) === name);
 }

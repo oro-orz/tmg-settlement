@@ -65,7 +65,7 @@ export function InvoiceApprovalArea({ invoice, onSubmitted, canApproveInvoice = 
   if (!canApproveInvoice) {
     return (
       <div className="p-4 text-body text-muted-foreground">
-        承認・差し戻しは経理・役員のみ可能です。
+        経理提出済みの申請のみ承認・差し戻しできます。
       </div>
     );
   }

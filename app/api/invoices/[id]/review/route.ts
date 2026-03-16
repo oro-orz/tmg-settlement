@@ -3,7 +3,7 @@ import {
   buildInvoiceFileName,
   buildPaymentFileName,
   buildReceiptFileName,
-  sanitize,
+  storageSafeSlug,
 } from "@/lib/invoiceFileName";
 import { getServerSupabase, invoiceRowToInvoice, type InvoiceRow } from "@/lib/supabase";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -22,7 +22,7 @@ async function resolveFileName(
   targetMonth: string,
   type: "received" | "payment" | "receipt"
 ): Promise<{ fileName: string; destPath: string }> {
-  const safeName = sanitize(partnerName);
+  const safeName = storageSafeSlug(partnerName);
   const folderPath = `${targetMonth}/${safeName}`;
   let version = 1;
   while (true) {
