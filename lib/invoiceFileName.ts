@@ -7,10 +7,14 @@ function formatMonth(targetMonth: string): string {
 }
 
 /**
- * Storageパスに使えない文字を除去
+ * Storageパス・オブジェクトキーに使えない文字を除去（Supabase Storage の Invalid key を防ぐ）
+ * スペース・スラッシュ・バックスラッシュ・制御文字などをアンダースコアに置換
  */
 export function sanitize(name: string): string {
-  return name.replace(/[/\\:*?"<>|]/g, "_").trim();
+  return name
+    .replace(/[/\\:*?"<>|\s]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .trim() || "_";
 }
 
 /**
