@@ -154,7 +154,7 @@ export default function ArchivePage() {
       a.download = `archive_${new Date().toISOString().slice(0, 10)}.zip`;
       a.click();
       URL.revokeObjectURL(url);
-    } catch (e) {
+    } catch {
       alert("一括ダウンロードに失敗しました");
     } finally {
       setBulkDownloading(false);
