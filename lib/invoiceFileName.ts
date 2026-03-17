@@ -87,3 +87,51 @@ export function getInvoiceDownloadFileName(params: {
   if (params.type === "receipt") return buildReceiptFileName(params.vendorName, params.targetMonth);
   return buildInvoiceFileName(receivedName, params.targetMonth);
 }
+
+/**
+ * ダウンロード用ファイル名に使う文字のみ許可（/ \ : * ? " < > | を _ に）。日本語はそのまま。
+ */
+function sanitizeForDownloadFileName(name: string): string {
+  return name
+    .replace(/[/\\:*?"<>|]/g, "_")
+    .replace(/\s+/g, " ")
+    .trim() || "_";
+}
+
+/** target_month "2026-02" → "2026年2"（後ろに「月度」を付けて「2026年2月度」にする用） */
+function formatMonthLabel(targetMonth: string): string {
+  const m = (targetMonth || "").trim();
+  if (!m) return "";
+  const [y, month] = m.split("-");
+  if (!y || !month) return m;
+  const monthNum = parseInt(month, 10);
+  if (Number.isNaN(monthNum) || monthNum < 1 || monthNum > 12) return m;
+  return `${y}年${monthNum}`;
+}
+
+/**
+ * ダウンロード用の日本語ファイル名（Content-Disposition filename*=UTF-8 で使用）。
+ * 買掛: 支払い_取引先名_○月月度請求書 / 売掛: 請求先名_○月月度請求書 / 領収書: 支払い済み_取引先名_○月月度領収書
+ */
+export function getInvoiceDownloadFileNameJapanese(params: {
+  vendorName: string;
+  clientName?: string;
+  targetMonth: string;
+  type: "received" | "payment" | "receipt";
+}): string {
+  const company = sanitizeForDownloadFileName(params.vendorName || "");
+  const receivedName = sanitizeForDownloadFileName(
+    (params.clientName ?? "").trim() || params.vendorName || ""
+  );
+  const monthLabel = formatMonthLabel(params.targetMonth);
+
+  switch (params.type) {
+    case "payment":
+      return `支払い_${company}_${monthLabel}月度請求書.pdf`;
+    case "receipt":
+      return `支払い済み_${company}_${monthLabel}月度領収書.pdf`;
+    case "received":
+    default:
+      return `${receivedName}_${monthLabel}月度請求書.pdf`;
+  }
+}
