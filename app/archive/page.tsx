@@ -4,11 +4,19 @@ import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
 import { Header } from "@/components/layout/Header";
-import type { Invoice } from "@/lib/types";
-import { getDisplayPartnerName, getManagementTypeLabel } from "@/lib/invoiceTypeLabels";
+import type { Invoice, InvoiceType } from "@/lib/types";
+import { getDisplayPartnerName, getManagementTypeLabel, MANAGEMENT_TYPE_LABELS } from "@/lib/invoiceTypeLabels";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/shared/LoadingSpinner";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faFolder, faFolderOpen, faChevronRight, faChevronDown, faSearch } from "@fortawesome/free-solid-svg-icons";
+import { faFolder, faFolderOpen, faChevronRight, faChevronDown, faSearch, faDownload } from "@fortawesome/free-solid-svg-icons";
 
 type ViewMode = "month" | "partner";
 
@@ -35,6 +43,9 @@ export default function ArchivePage() {
   const [partnerSearch, setPartnerSearch] = useState("");
   const [expandedYears, setExpandedYears] = useState<Set<string>>(new Set());
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
+  const [filterType, setFilterType] = useState<InvoiceType | "">("");
+  const [filterSubmitter, setFilterSubmitter] = useState<string>("");
+  const [bulkDownloading, setBulkDownloading] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -102,17 +113,73 @@ export default function ArchivePage() {
   const handleSelectMonth = (month: string) => {
     setSelectedMonth(month);
     setSelectedPartner("");
+    setFilterType("");
+    setFilterSubmitter("");
   };
 
   const handleSelectPartner = (partner: string) => {
     setSelectedPartner(partner);
     setSelectedMonth("");
+    setFilterType("");
+    setFilterSubmitter("");
   };
 
   const clearSelection = () => {
     setSelectedMonth("");
     setSelectedPartner("");
+    setFilterType("");
+    setFilterSubmitter("");
   };
+
+  const handleBulkDownload = async () => {
+    const ids = listToShow.map((inv) => inv.id);
+    if (ids.length === 0) return;
+    setBulkDownloading(true);
+    try {
+      const res = await fetch("/api/invoices/archive-download", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids }),
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert(data?.message || "一括ダウンロードに失敗しました");
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `archive_${new Date().toISOString().slice(0, 10)}.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      alert("一括ダウンロードに失敗しました");
+    } finally {
+      setBulkDownloading(false);
+    }
+  };
+
+  const uniqueSubmitters = useMemo(() => {
+    const names = new Set<string>();
+    for (const inv of filteredInvoices) {
+      const n = (inv.submitterName || "").trim();
+      if (n) names.add(n);
+    }
+    return Array.from(names).sort((a, b) => a.localeCompare(b, "ja"));
+  }, [filteredInvoices]);
+
+  const listToShow = useMemo(() => {
+    let list = filteredInvoices;
+    if (filterType) {
+      list = list.filter((inv) => inv.type === filterType);
+    }
+    if (filterSubmitter) {
+      list = list.filter((inv) => (inv.submitterName || "").trim() === filterSubmitter);
+    }
+    return list;
+  }, [filteredInvoices, filterType, filterSubmitter]);
 
   const leftPanel = (
     <div className="p-4 space-y-4">
@@ -228,7 +295,59 @@ export default function ArchivePage() {
 
   const centerPanel = (
     <div className="p-4 flex flex-col min-h-0">
-      <h1 className="text-xl font-bold text-foreground mb-4">承認済み申請アーカイブ</h1>
+      {(selectedMonth || selectedPartner) && (
+        <div className="flex flex-wrap items-center gap-3 mb-4">
+          <div className="flex items-center gap-2">
+            <span className="text-caption font-medium text-muted-foreground">種別</span>
+            <Select value={filterType || "all"} onValueChange={(v) => setFilterType((v === "all" ? "" : v) as InvoiceType | "")}>
+              <SelectTrigger className="w-[120px] h-9 rounded-lg">
+                <SelectValue placeholder="すべて" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">すべて</SelectItem>
+                {(Object.entries(MANAGEMENT_TYPE_LABELS) as [InvoiceType, string][]).map(([value, label]) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-caption font-medium text-muted-foreground">担当者</span>
+            <Select value={filterSubmitter || "all"} onValueChange={(v) => setFilterSubmitter(v === "all" ? "" : v)}>
+              <SelectTrigger className="w-[140px] h-9 rounded-lg">
+                <SelectValue placeholder="すべて" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">すべて</SelectItem>
+                {uniqueSubmitters.map((name) => (
+                  <SelectItem key={name} value={name}>
+                    {name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {listToShow.length > 0 && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="rounded-lg gap-1.5"
+              disabled={bulkDownloading}
+              onClick={handleBulkDownload}
+            >
+              {bulkDownloading ? (
+                <LoadingSpinner className="w-4 h-4" />
+              ) : (
+                <FontAwesomeIcon icon={faDownload} className="w-4 h-4" />
+              )}
+              一括ダウンロード（{listToShow.length} 件）
+            </Button>
+          )}
+        </div>
+      )}
       {loading ? (
         <div className="flex items-center justify-center py-12">
           <LoadingSpinner className="h-8 w-8" />
@@ -240,6 +359,10 @@ export default function ArchivePage() {
       ) : filteredInvoices.length === 0 ? (
         <p className="text-body text-muted-foreground py-8">
           {selectedMonth ? "この月の承認済みはありません。" : "この取引先の承認済みはありません。"}
+        </p>
+      ) : listToShow.length === 0 ? (
+        <p className="text-body text-muted-foreground py-8">
+          種別・担当者の条件に一致する申請がありません。
         </p>
       ) : (
         <div className="rounded-lg border border-border overflow-hidden flex-1 min-h-0 flex flex-col">
@@ -256,7 +379,7 @@ export default function ArchivePage() {
                 </tr>
               </thead>
               <tbody>
-                {filteredInvoices
+                {listToShow
                   .sort((a, b) => {
                     const ma = a.targetMonth || "";
                     const mb = b.targetMonth || "";
@@ -294,7 +417,7 @@ export default function ArchivePage() {
             </table>
           </div>
           <div className="px-3 py-2 border-t border-border bg-muted/30 text-caption text-muted-foreground">
-            {filteredInvoices.length} 件
+            {listToShow.length} 件
           </div>
         </div>
       )}

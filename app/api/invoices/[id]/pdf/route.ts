@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase";
-import { getInvoiceDownloadFileName } from "@/lib/invoiceFileName";
+import { getInvoiceDownloadFileNameJapanese } from "@/lib/invoiceFileName";
 import type { InvoiceRow } from "@/lib/supabase";
 
 type Params = { params: Promise<{ id: string }> };
@@ -65,11 +65,10 @@ export async function GET(request: NextRequest, { params }: Params) {
         );
       }
       const arrayBuffer = await res.arrayBuffer();
-      const fileName = getInvoiceDownloadFileName({
-        fileName: r.file_name,
-        vendorName: r.vendor_name,
-        clientName: r.client_name,
-        targetMonth: r.target_month,
+      const fileName = getInvoiceDownloadFileNameJapanese({
+        vendorName: r.vendor_name ?? "",
+        clientName: r.client_name ?? undefined,
+        targetMonth: r.target_month ?? "",
         type: r.type === "payment" ? "payment" : r.type === "receipt" ? "receipt" : "received",
       });
       return new NextResponse(arrayBuffer, {
