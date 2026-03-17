@@ -57,7 +57,7 @@ export function InvoiceApprovalArea({ invoice, onSubmitted, canApproveInvoice = 
   if (invoice.status !== "submitted") {
     return (
       <div className="p-4 text-body text-muted-foreground">
-        経理提出済みの申請のみ承認・差し戻しできます。
+        経理提出済みの申請のみ承認・差し戻しできます。（この申請はまだ経理提出されていません）
       </div>
     );
   }
@@ -65,7 +65,7 @@ export function InvoiceApprovalArea({ invoice, onSubmitted, canApproveInvoice = 
   if (!canApproveInvoice) {
     return (
       <div className="p-4 text-body text-muted-foreground">
-        経理提出済みの申請のみ承認・差し戻しできます。
+        <p>経理申請済み。承認作業が完了するまでお待ちください。</p>
       </div>
     );
   }

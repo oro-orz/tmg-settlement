@@ -60,24 +60,35 @@ export function getInvoiceApproverDepartments(): string[] {
   return v.length > 0 ? v : ["経理"];
 }
 
-/** 承認可能な役職（役員など）。INVOICE_APPROVER_ROLES（未設定時は「役員」） */
+/** 承認可能な役職（役員のみ。PS/M は他スタッフもいるため認証には使わない）INVOICE_APPROVER_ROLES（未設定時は「役員」） */
 export function getInvoiceApproverRoles(): string[] {
   const v = parseCsv(process.env.INVOICE_APPROVER_ROLES);
   return v.length > 0 ? v : ["役員"];
 }
 
-/** セッションの所属・役職から「請求書の承認・差し戻し」が可能か */
+/** 承認可能なメールアドレス（経理同等の個別指定用。例: システム課部長）INVOICE_APPROVER_EMAILS（カンマ区切り・小文字で比較） */
+export function getInvoiceApproverEmails(): string[] {
+  return parseCsv(process.env.INVOICE_APPROVER_EMAILS).map((e) =>
+    e.toLowerCase().trim()
+  );
+}
+
+/** セッションの所属・役職・メールから「請求書の承認・差し戻し」が可能か */
 export function canApproveInvoice(session: {
   department?: string | null;
   role?: string | null;
+  email?: string | null;
 } | null): boolean {
   if (!session) return false;
   const dept = (session.department ?? "").trim();
   const role = (session.role ?? "").trim();
+  const emailLower = (session.email ?? "").toLowerCase().trim();
   const allowedDepts = getInvoiceApproverDepartments();
   const allowedRoles = getInvoiceApproverRoles();
+  const allowedEmails = getInvoiceApproverEmails();
   if (allowedDepts.length > 0 && allowedDepts.includes(dept)) return true;
   if (allowedRoles.length > 0 && allowedRoles.includes(role)) return true;
+  if (allowedEmails.length > 0 && emailLower && allowedEmails.includes(emailLower)) return true;
   return false;
 }
 

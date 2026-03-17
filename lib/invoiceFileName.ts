@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 /**
  * Storageパス・オブジェクトキーに使えない文字を除去（Supabase Storage の Invalid key を防ぐ）
  * スペース・スラッシュ・バックスラッシュ・制御文字などをアンダースコアに置換
@@ -9,15 +11,22 @@ export function sanitize(name: string): string {
     .trim() || "_";
 }
 
+/** 日本語のみの名前用: 8文字の短いハッシュで一意化（同じ会社名は同じフォルダになる） */
+function shortHash(str: string): string {
+  return createHash("sha256").update(str, "utf8").digest("hex").slice(0, 8);
+}
+
 /**
  * ストレージキー用: 英数字・ハイフン・アンダースコアのみにし、Supabase の Invalid key を防ぐ（フォルダ・ファイル名の両方で使用）
+ * 日本語のみの会社名の場合は vendor_xxxxxxxx（名前のハッシュ）になり、社ごとに別フォルダになる
  */
 export function storageSafeSlug(name: string): string {
   const s = sanitize(name)
     .replace(/[^A-Za-z0-9_-]/g, "_")
     .replace(/_+/g, "_")
     .replace(/^_+|_+$/g, "");
-  return s || "vendor";
+  if (s) return s;
+  return "vendor_" + shortHash(name);
 }
 
 /**
