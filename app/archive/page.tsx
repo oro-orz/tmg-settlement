@@ -8,7 +8,7 @@ import type { Invoice } from "@/lib/types";
 import { getDisplayPartnerName, getManagementTypeLabel } from "@/lib/invoiceTypeLabels";
 import { LoadingSpinner } from "@/components/shared/LoadingSpinner";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faFolder, faFolderOpen, faChevronRight, faChevronDown, faFilePdf, faPrint, faSearch } from "@fortawesome/free-solid-svg-icons";
+import { faFolder, faFolderOpen, faChevronRight, faChevronDown, faSearch } from "@fortawesome/free-solid-svg-icons";
 
 type ViewMode = "month" | "partner";
 
@@ -128,7 +128,9 @@ export default function ArchivePage() {
           type="button"
           onClick={() => { setViewMode("month"); clearSelection(); }}
           className={`flex-1 py-2 text-caption font-medium rounded-md transition-colors ${
-            viewMode === "month" ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground"
+            viewMode === "month"
+              ? "bg-primary text-primary-foreground shadow"
+              : "text-muted-foreground hover:text-foreground"
           }`}
         >
           月別
@@ -137,7 +139,9 @@ export default function ArchivePage() {
           type="button"
           onClick={() => { setViewMode("partner"); clearSelection(); }}
           className={`flex-1 py-2 text-caption font-medium rounded-md transition-colors ${
-            viewMode === "partner" ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground"
+            viewMode === "partner"
+              ? "bg-primary text-primary-foreground shadow"
+              : "text-muted-foreground hover:text-foreground"
           }`}
         >
           取引先
@@ -276,25 +280,13 @@ export default function ArchivePage() {
                       <td className="py-2 px-3">{inv.submitterName || "—"}</td>
                       <td className="py-2 px-3">{formatApprovedAt(inv.approvedAt)}</td>
                       <td className="py-2 px-3" onClick={(e) => e.stopPropagation()}>
-                        <span className="flex items-center gap-3 flex-wrap">
-                          <a
-                            href={`/api/invoices/${inv.id}/pdf`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-primary hover:underline inline-flex items-center gap-1"
-                          >
-                            <FontAwesomeIcon icon={faPrint} className="w-4 h-4" />
-                            印刷・共有
-                          </a>
-                          <a
-                            href={`/api/invoices/${inv.id}/pdf?download=1`}
-                            className="text-primary hover:underline inline-flex items-center gap-1"
-                            download
-                          >
-                            <FontAwesomeIcon icon={faFilePdf} className="w-4 h-4" />
-                            ダウンロード
-                          </a>
-                        </span>
+                        <a
+                          href={`/api/invoices/${inv.id}/pdf?download=1`}
+                          className="text-primary hover:underline text-caption"
+                          download
+                        >
+                          ダウンロード
+                        </a>
                       </td>
                     </tr>
                   ))}

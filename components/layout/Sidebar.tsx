@@ -28,7 +28,7 @@ export function Sidebar() {
             title={item.label}
             aria-label={item.label}
           >
-            <FontAwesomeIcon icon={item.icon} className="text-lg" style={{ width: "1.25rem", height: "1.25rem" }} />
+            {item.icon && <FontAwesomeIcon icon={item.icon} className="text-lg" style={{ width: "1.25rem", height: "1.25rem" }} />}
           </Link>
         ))}
       </div>

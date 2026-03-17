@@ -27,18 +27,18 @@ export function AIRiskBadge({
   compact = false,
   className,
 }: AIRiskBadgeProps) {
-  const icon = AI_RISK_ICONS[riskLevel];
+  const icon = riskLevel != null ? AI_RISK_ICONS[riskLevel as keyof typeof AI_RISK_ICONS] : undefined;
   const label = riskLevel === "OK" ? "OK" : riskLevel === "ERROR" ? "NG" : "要確認";
 
   return (
     <span
       className={cn(
         "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-caption font-medium border",
-        AI_RISK_COLORS[riskLevel],
+        riskLevel != null ? AI_RISK_COLORS[riskLevel] : "",
         className
       )}
     >
-      <FontAwesomeIcon icon={icon} className="text-xs" />
+      {icon && <FontAwesomeIcon icon={icon} className="text-xs" />}
       {!compact && <span>{label}</span>}
     </span>
   );
